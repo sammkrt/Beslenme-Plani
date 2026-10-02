@@ -9,4 +9,4 @@ ALLOWED_ORIGINS = "https://sammkrt.github.io,http://localhost:8000"
 [[d1_databases]]
 binding = "DB"
 database_name = "beslenme"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "a1fd7e14-1899-4c6c-96fe-05a055452f91"

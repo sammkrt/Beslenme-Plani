@@ -402,7 +402,7 @@ if(typeof module!=='undefined')module.exports={validRecipe,B,S,D,Z,generate,buil
 if(typeof document!=='undefined'){
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 /* Veri Cloudflare Worker + D1'de tutulur; localStorage çevrimdışı önbellektir. ver = sunucudan son görülen sürüm, dirty = gönderilmemiş değişiklik. */
-const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost:8787':'https://beslenme-api.WORKERS_SUBDOMAIN.workers.dev';
+const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost:8787':'https://beslenme-api.samet-krt.workers.dev';
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let hist=[],cur=0,shopOpen=false,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
