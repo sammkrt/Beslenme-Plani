@@ -33,7 +33,7 @@
 html{color-scheme:light dark}
 @media print{
   :root,:root[data-theme="dark"],:root:not([data-theme="light"]){--bg:#ffffff;--surface:#ffffff;--ink:#1d2620;--muted:#5d6b62;--line:#dbe2da;--accent:#1f6b4f;--accent-ink:#ffffff;--samet:#1b5f7a;--rase:#8a2f5c;--soft:#eef3ed;--warn:#b4541a;--warn-bg:#fbe9dc;--ok:#1f6b4f;color-scheme:light}
-  .bar,.weeks,#toast,textarea,#copy,.sub{display:none!important}
+  .bar,.weeks,#toast,textarea,#copy,.sub,.swap{display:none!important}
   .wrap{max-width:none;padding:0;gap:12px}
   body{font-size:11.5px}
   .meal,.prep,tr,.card h2{break-inside:avoid}
@@ -354,16 +354,29 @@ function pick(pool,n,hist,diverse){
   sc.forEach(o=>{if(out.length<n&&!out.includes(o.x))out.push(o.x)});
   return out;
 }
+// aynı güne iki skyr kasesi ya da tost+wasa gelmesin diye basit eşleştirme
+const clash=(x,y)=>(x.id==='b4'&&['s2','s4','s8'].includes(y.id))||((x.id==='b2'||x.id==='b10')&&y.id==='s6')||(x.id==='b9'&&y.id==='s9');
 function generate(hist,forced){
   const no=hist.length?hist[hist.length-1].no+1:5;
   const b=pick(B,4,hist),s=pick(S,4,hist),d0=pick(D,3,hist,true),z0=pick(Z,1,hist)[0];
   const fd=forced?forced.filter(x=>x.two):[],fz=forced?forced.filter(x=>!x.two):[];
   const d=[...fd,...d0.filter(x=>!fd.includes(x))].slice(0,3),z=fz[0]||z0;
-  // aynı güne iki skyr kasesi ya da tost+wasa gelmesin diye basit eşleştirme
-  const clash=(x,y)=>(x.id==='b4'&&['s2','s4','s8'].includes(y.id))||((x.id==='b2'||x.id==='b10')&&y.id==='s6')||(x.id==='b9'&&y.id==='s9');
   for(let n=0;n<3;n++)for(let i=0;i<4;i++)if(clash(b[i],s[i])){const j=(i+1)%4;[s[i],s[j]]=[s[j],s[i]]}
   const dd=[...d,z];
   return {no,plans:b.map((x,i)=>({b:x.id,s:s[i].id,d:dd[i].id}))};
+}
+/* Haftanın tek bir öğününü aynı türden başka tarifle değiştirir: kahvaltı↔kahvaltı, ara öğün↔ara öğün,
+   2 günlük akşam↔2 günlük akşam, Pazar↔Pazar. Haftada tekrar, geçen haftanın akşamı ve çakışan kahvaltı/ara öğün elenir;
+   seen = bu öğün için daha önce gösterilenler (art arda basınca hep yeni tarif gelsin diye). */
+function swapPick(hist,wi,i,k,seen){
+  const w=hist[wi],p=w.plans[i],cur=p[k];
+  const pool=k==='b'?B:k==='s'?S:D.some(x=>x.id===cur)?D:Z;
+  const used=new Set(w.plans.map(q=>q[k])),prev=hist[wi-1],prevD=new Set(prev?prev.plans.map(q=>q.d):[]);
+  let c=pool.filter(x=>!used.has(x.id)&&!(k==='d'&&prevD.has(x.id))&&!(k==='b'&&clash(x,ALL[p.s]))&&!(k==='s'&&clash(ALL[p.b],x)));
+  if(pool===D){const pts=new Set(w.plans.slice(0,3).filter((q,j)=>j!==i).map(q=>ALL[q.d].pt)),div=c.filter(x=>!pts.has(x.pt));if(div.length)c=div}
+  const fresh=c.filter(x=>!(seen&&seen.has(x.id)));if(fresh.length)c=fresh;
+  if(!c.length)return null;
+  return pick(c,1,hist.slice(0,wi))[0].id;
 }
 /* ===== ALIŞVERİŞ: (Samet + Raşe) × gün sayısı, besin bazında birleştirilir ===== */
 const nf=v=>Number(v).toLocaleString('tr-TR',{maximumFractionDigits:1});
@@ -396,7 +409,7 @@ function shopText(w,plans){
   SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';sh[k].forEach(x=>t+='☐ '+x.n+' — '+x.buy+(x.need?' (gerekli: '+x.need+')':'')+'\n')});
   return t;
 }
-if(typeof module!=='undefined')module.exports={validRecipe,B,S,D,Z,generate,build,shopping,shopText,T,balance,mac};
+if(typeof module!=='undefined')module.exports={validRecipe,B,S,D,Z,generate,swapPick,build,shopping,shopText,T,balance,mac};
 
 /* ===== ARAYÜZ ===== */
 if(typeof document!=='undefined'){
@@ -423,7 +436,7 @@ function adopt(d){
   hist=d.hist;ver=d.v;dirty=false;cur=hist.length-1;saveLocal();render();return true;
 }
 /* Gönderimler sıraya alınır; böylece art arda iki değişiklik aynı sürüm üzerine yazmaya çalışmaz. */
-let queue=Promise.resolve();
+let queue=Promise.resolve(),swapSeen={};
 function push(){queue=queue.then(doPush);return queue}
 async function doPush(){
   if(!dirty)return;
@@ -460,6 +473,7 @@ function mealHTML(label,rec,ing,days,isDinner,pi,k){
   if(isDinner&&days>1){const bt=ing.filter(i=>!i[3]).map(i=>esc(F[i[0]].n.replace(/ \(.*\)/,''))+' '+amt(i[0],(i[1]+i[2])*days));
     h+='<div class="batch"><b>Tencereye girecek toplam (2 kişi × 2 gün):</b> '+bt.join(' · ')+'. Pilav, yoğurt ve salata günlük hazırlanır; yemek buzdolabında kapalı kapta 2 gün saklanır. Tabağa koyarken eti/proteini tartarak paylaştırın.</div>'}
   h+='</div>';
+  if(cur===hist.length-1)h+='<div class="swap"><button class="small" data-swap="'+pi+':'+k+'">↻ Başka '+({b:'kahvaltı',s:'ara öğün',d:'akşam yemeği'})[k]+' getir</button></div>'; // yalnızca güncel hafta değiştirilebilir
   return h+'</div>';
 }
 function render(){
@@ -499,6 +513,9 @@ document.addEventListener('click',e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.w!==undefined){cur=+t.dataset.w;render()}
   else if(t.id==='reset'){if(t.dataset.sure){hist=[generate([])];cur=0;save();render();toast('Geçmiş silindi, Hafta 5 yeniden hazırlandı')}else{t.dataset.sure=1;t.textContent='Emin misin? Tekrar tıkla'}}
+  else if(t.dataset&&t.dataset.swap){const[i,k]=t.dataset.swap.split(':'),p=hist[cur].plans[+i],key=hist[cur].no+':'+t.dataset.swap,seen=swapSeen[key]||(swapSeen[key]=new Set());
+    seen.add(p[k]);const id=swapPick(hist,cur,+i,k,seen);if(!id){toast('Bu öğün için uygun başka tarif yok');return}
+    const old=ALL[p[k]].name;p[k]=id;seen.add(id);save();render();toast(old+' → '+ALL[id].name)}
   else if(t.id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
   else if(t.id==='copy'){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')})}
 });
