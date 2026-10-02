@@ -361,9 +361,19 @@ function generate(hist,forced){
   const b=pick(B,4,hist),s=pick(S,4,hist),d0=pick(D,3,hist,true),z0=pick(Z,1,hist)[0];
   const fd=forced?forced.filter(x=>x.two):[],fz=forced?forced.filter(x=>!x.two):[];
   const d=[...fd,...d0.filter(x=>!fd.includes(x))].slice(0,3),z=fz[0]||z0;
-  for(let n=0;n<3;n++)for(let i=0;i<4;i++)if(clash(b[i],s[i])){const j=(i+1)%4;[s[i],s[j]]=[s[j],s[i]]}
-  const dd=[...d,z];
-  return {no,plans:b.map((x,i)=>({b:x.id,s:s[i].id,d:dd[i].id}))};
+  const ss=pairSnacks(b,s,hist),dd=[...d,z];
+  return {no,plans:b.map((x,i)=>({b:x.id,s:ss[i].id,d:dd[i].id}))};
+}
+/* Ara öğünleri kahvaltılarla çakışmayacak şekilde sıralar: önce en az yer değiştiren sıralama,
+   hiçbiri olmazsa çakışan ara öğün havuzdan çakışmayan başka biriyle değiştirilir. */
+function pairSnacks(b,s,hist){
+  const perms=a=>a.length<2?[a]:a.flatMap((x,i)=>perms([...a.slice(0,i),...a.slice(i+1)]).map(p=>[x,...p]));
+  const moved=p=>p.filter((x,i)=>x!==s[i]).length;
+  const ok=perms(s).filter(p=>p.every((x,i)=>!clash(b[i],x))).sort((p,q)=>moved(p)-moved(q));
+  if(ok.length)return ok[0];
+  const out=s.slice();
+  out.forEach((x,i)=>{if(clash(b[i],x)){const r=pick(S.filter(y=>!out.includes(y)&&!clash(b[i],y)),1,hist)[0];if(r)out[i]=r}});
+  return out;
 }
 /* Haftanın tek bir öğününü aynı türden başka tarifle değiştirir: kahvaltı↔kahvaltı, ara öğün↔ara öğün,
    2 günlük akşam↔2 günlük akşam, Pazar↔Pazar. Haftada tekrar, geçen haftanın akşamı ve çakışan kahvaltı/ara öğün elenir;
