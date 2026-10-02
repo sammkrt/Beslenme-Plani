@@ -30,10 +30,11 @@
   --accent:#6fcf9f; --accent-ink:#0f1a14; --samet:#7cc4e0; --rase:#eb9cc2;
   --soft:#242d28; --warn:#f0a36b; --warn-bg:#3a2617; --ok:#6fcf9f; color-scheme:dark }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{color-scheme:light dark}
 @media print{
   :root,:root[data-theme="dark"],:root:not([data-theme="light"]){--bg:#ffffff;--surface:#ffffff;--ink:#1d2620;--muted:#5d6b62;--line:#dbe2da;--accent:#1f6b4f;--accent-ink:#ffffff;--samet:#1b5f7a;--rase:#8a2f5c;--soft:#eef3ed;--warn:#b4541a;--warn-bg:#fbe9dc;--ok:#1f6b4f;color-scheme:light}
-  .bar,.weeks,#toast,textarea,#copy,.sub,.swap{display:none!important}
+  .bar,.weeks,#toast,textarea,#copy,.sub,.swap,.pdfhelp{display:none!important}
   .wrap{max-width:none;padding:0;gap:12px}
   body{font-size:11.5px}
   .meal,.prep,tr,.card h2{break-inside:avoid}
@@ -54,6 +55,9 @@ button:hover{border-color:var(--accent)}
 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 button.small{padding:5px 10px;font-size:.82rem}
+a.btn{font:600 0.92rem var(--body);border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;text-decoration:none;display:inline-block}
+a.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pdfhelp{border-color:var(--accent)}
 button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .weeks{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .weeks span{color:var(--muted);font-size:.85rem;margin-right:4px}
@@ -112,6 +116,11 @@ textarea{width:100%;min-height:160px;font:13px/1.5 ui-monospace,Menlo,monospace;
     <button id="btnShop">Market Alışveriş Listesi Oluştur</button>
     <button id="btnPdf">PDF Olarak İndir</button>
   </div>
+  <section class="card pdfhelp" id="pdfhelp" hidden>
+    <h3>PDF için Safari’de açın</h3>
+    <p class="note">iPhone, ana ekrana eklenen uygulamalarda yazdırmaya izin vermiyor. Plan Safari’de açılınca yazdırma penceresi kendiliğinden gelir; orada <b>Paylaş</b> simgesine dokunup <b>Dosyalara Kaydet</b>’i seçin.</p>
+    <div class="qc" style="gap:8px"><a class="btn primary" id="pdfSafari" href="#">Safari’de aç</a><a class="btn" id="pdfAlt" href="#" target="_blank" rel="noopener">Açılmazsa bunu deneyin</a><button class="small" id="pdfClose">Kapat</button></div>
+  </section>
   <div class="weeks" id="weeks"></div>
   <div class="targets" id="targets"></div>
   <div id="menu" style="display:flex;flex-direction:column;gap:20px"></div>
@@ -529,9 +538,19 @@ document.addEventListener('click',e=>{
   else if(t.id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
   else if(t.id==='copy'){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')})}
 });
-$('btnPdf').onclick=()=>{shopOpen=true;render();setTimeout(()=>window.print(),50)};
+/* iOS ana ekran uygulamasında window.print() hiçbir şey yapmaz: sayfayı ?pdf=1 ile Safari'de açtırıp orada yazdırırız. */
+function printNow(){shopOpen=true;render();setTimeout(()=>window.print(),50)}
+$('btnPdf').onclick=()=>{
+  if(navigator.standalone!==true)return printNow();
+  const u=location.origin+location.pathname+'?pdf=1';
+  $('pdfSafari').href='x-safari-'+u;$('pdfAlt').href=u;$('pdfhelp').hidden=false;window.scrollTo({top:0});
+};
+$('pdfClose').onclick=()=>{$('pdfhelp').hidden=true};
+const wantPdf=new URLSearchParams(location.search).has('pdf');
+if(wantPdf)history.replaceState(null,'',location.pathname); // yenileyince tekrar yazdırmasın
 if(hist.length){cur=hist.length-1;render()}else $('menu').innerHTML='<p class="note">Plan yükleniyor…</p>';
-pull().then(()=>{if(!hist.length){hist.push(generate([]));cur=0;save();render()}});
+pull().then(()=>{if(!hist.length){hist.push(generate([]));cur=0;save();render()}
+  if(wantPdf){toast('Yazdırma penceresi açılmazsa PDF Olarak İndir’e dokunun');printNow()}}); // sunucudaki güncel plan geldikten sonra yazdır
 addEventListener('online',()=>{if(dirty)push()});
 }
 </script>
