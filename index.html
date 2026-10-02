@@ -40,6 +40,9 @@ html{color-scheme:light dark}
   .meal,.prep,tr,.card h2{break-inside:avoid}
   .plan{overflow:visible}
   .plan-head,.prep,.badge,.qc span,td.warn{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .chev{display:none!important}
+  .plan.closed .meal{display:flex!important}
+  .plan-head{padding-right:16px}
   #shop,#nutri{break-before:page}
   @page{size:A4;margin:14mm}
 }
@@ -69,7 +72,11 @@ button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:v
 .target b{font-family:var(--display)}
 .target div{color:var(--muted);font-size:.88rem}
 .plan{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.plan-head{background:var(--soft);padding:14px 16px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;justify-content:space-between}
+.plan-head{background:var(--soft);padding:14px 56px 14px 16px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;justify-content:space-between;position:relative;cursor:pointer}
+.chev{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:36px;height:36px;padding:0;display:grid;place-items:center;border-radius:99px;background:var(--surface)}
+.chev svg{transition:transform .2s}
+.plan.closed .chev svg{transform:rotate(-90deg)}
+.plan.closed .meal{display:none}
 .plan-head .no{font-family:var(--display);font-weight:700;font-size:1.2rem}
 .plan-head .freq{font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 .plan-head .days{font-weight:600}
@@ -455,7 +462,8 @@ function adopt(d){
   hist=d.hist;ver=d.v;dirty=false;cur=hist.length-1;saveLocal();render();return true;
 }
 /* Gönderimler sıraya alınır; böylece art arda iki değişiklik aynı sürüm üzerine yazmaya çalışmaz. */
-let queue=Promise.resolve(),swapSeen={};
+let queue=Promise.resolve(),swapSeen={},closed=lsGet('beslenme-closed',[]); // kapalı BESLENME kartları (yalnızca bu cihaz)
+if(!Array.isArray(closed))closed=[];
 function push(){queue=queue.then(doPush);return queue}
 async function doPush(){
   if(!dirty)return;
@@ -501,7 +509,9 @@ function render(){
   $('targets').innerHTML='<div class="target"><b>Samet</b><div>'+T.s.lo+'–'+T.s.hi+' kcal · en az '+T.s.pmin+' g protein (ilk 4 haftanın porsiyonlarından çıkarıldı)</div></div><div class="target r"><b>Raşe</b><div>'+T.r.lo+'–'+T.r.hi+' kcal · 95–110 g protein hedefi</div></div>';
   let h='<h2>HAFTA '+w.no+'</h2>';
   plans.forEach((p,i)=>{const n=p.days.length;
-    h+='<article class="plan"><div class="plan-head"><span class="no">BESLENME – '+(i+1)+' –</span><span class="freq">Haftada '+n+' gün</span><span class="days">'+p.days.map(d=>DAYS[d]).join(' – ')+'</span></div>';
+    const op=!closed.includes(i);
+    h+='<article class="plan'+(op?'':' closed')+'" data-plan="'+i+'"><div class="plan-head"><span class="no">BESLENME – '+(i+1)+' –</span><span class="freq">Haftada '+n+' gün</span><span class="days">'+p.days.map(d=>DAYS[d]).join(' – ')+'</span>'+
+      '<button class="chev" aria-expanded="'+op+'" aria-label="BESLENME '+(i+1)+' göster/gizle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>';
     h+=mealHTML('Kahvaltı',ALL[p.b],p.ing.b,n,false,i,'b')+mealHTML('Ara öğün',ALL[p.s],p.ing.s,n,false,i,'s')+mealHTML('Akşam yemeği',ALL[p.d],p.ing.d,n,true,i,'d')+'</article>'});
   $('menu').innerHTML=h;
   // günlük tablo
@@ -529,7 +539,10 @@ function renderShop(w,plans){
 $('btnNew').onclick=()=>{hist.push(generate(hist));if(hist.length>26)hist.shift();cur=hist.length-1;save();render();toast('Hafta '+hist[cur].no+' hazır');window.scrollTo({top:0})};
 $('btnShop').onclick=()=>{shopOpen=true;render();$('shop').scrollIntoView({behavior:'smooth',block:'start'})};
 document.addEventListener('click',e=>{
-  const t=e.target;
+  const t=e.target,head=t.closest&&t.closest('.plan-head');
+  if(head){const a=head.parentNode,i=+a.dataset.plan,c=a.classList.toggle('closed');
+    head.querySelector('.chev').setAttribute('aria-expanded',!c);
+    closed=c?[...closed,i]:closed.filter(x=>x!==i);lsSet('beslenme-closed',closed);return}
   if(t.dataset&&t.dataset.w!==undefined){cur=+t.dataset.w;render()}
   else if(t.id==='reset'){if(t.dataset.sure){hist=[generate([])];cur=0;save();render();toast('Geçmiş silindi, Hafta 5 yeniden hazırlandı')}else{t.dataset.sure=1;t.textContent='Emin misin? Tekrar tıkla'}}
   else if(t.dataset&&t.dataset.swap){const[i,k]=t.dataset.swap.split(':'),p=hist[cur].plans[+i],key=hist[cur].no+':'+t.dataset.swap,seen=swapSeen[key]||(swapSeen[key]=new Set());
