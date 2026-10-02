@@ -1,0 +1,12 @@
+name = "beslenme-api"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://sammkrt.github.io,http://localhost:8000"
+
+# database_id, `npx wrangler d1 create beslenme` çıktısından gelir (gizli bilgi değildir).
+[[d1_databases]]
+binding = "DB"
+database_name = "beslenme"
+database_id = "00000000-0000-0000-0000-000000000000"

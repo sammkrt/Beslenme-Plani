@@ -1,0 +1,93 @@
+/* Beslenme Planı API — Cloudflare Worker + D1.
+   Tek satırlık durum: {hist, custom} JSON'u ve sürüm numarası v.
+   GET  /api/state  → {v, hist, custom, updated}         (herkese açık okuma)
+   PUT  /api/state  → gövde {base, hist, custom}, X-Pin başlığı zorunlu.
+                      base, sunucudaki v ile aynı değilse 409 + güncel durum döner. */
+
+const MAX_BODY = 100_000;
+const ID = /^[a-z0-9_-]{1,24}$/i;
+
+function cors(req, env) {
+  const origin = req.headers.get('Origin') || '';
+  const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const h = {
+    'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Pin',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
+  };
+  if (allowed.includes(origin)) h['Access-Control-Allow-Origin'] = origin;
+  return h;
+}
+
+function json(data, status, req, env) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...cors(req, env) },
+  });
+}
+
+/* Sabit süreli karşılaştırma: PIN'i deneme süresinden tahmin etmeyi zorlaştırır. */
+async function pinOk(given, expected) {
+  if (!expected || typeof given !== 'string') return false;
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(given)),
+    crypto.subtle.digest('SHA-256', enc.encode(expected)),
+  ]);
+  const x = new Uint8Array(a), y = new Uint8Array(b);
+  let d = 0;
+  for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
+  return d === 0;
+}
+
+/* Yalnızca uygulamanın ürettiği şekli kabul eder; tarif içeriğinin doğrulaması istemcide (validRecipe) yapılır. */
+function validState(s) {
+  if (!s || !Array.isArray(s.hist) || !Array.isArray(s.custom)) return false;
+  if (s.hist.length > 30 || s.custom.length > 60) return false;
+  const histOk = s.hist.every(w => w && Number.isInteger(w.no) && w.no > 0 && w.no < 100000 &&
+    Array.isArray(w.plans) && w.plans.length === 4 &&
+    w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d)));
+  const customOk = s.custom.every(r => r && typeof r === 'object' && ID.test(r.id));
+  return histOk && customOk;
+}
+
+async function readState(env) {
+  const row = await env.DB.prepare('SELECT v, data, updated FROM state WHERE id = 1').first();
+  if (!row) return { v: 0, hist: [], custom: [], updated: null };
+  const d = JSON.parse(row.data);
+  return { v: row.v, hist: d.hist, custom: d.custom, updated: row.updated };
+}
+
+export default {
+  async fetch(req, env) {
+    const url = new URL(req.url);
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req, env) });
+    if (url.pathname !== '/api/state') return json({ error: 'not_found' }, 404, req, env);
+
+    if (req.method === 'GET') return json(await readState(env), 200, req, env);
+
+    if (req.method === 'PUT') {
+      if (!(await pinOk(req.headers.get('X-Pin'), env.PIN))) {
+        await new Promise(r => setTimeout(r, 400)); // kaba kuvvet denemelerini yavaşlat
+        return json({ error: 'pin' }, 401, req, env);
+      }
+      const text = await req.text();
+      if (text.length > MAX_BODY) return json({ error: 'too_large' }, 413, req, env);
+      let body;
+      try { body = JSON.parse(text); } catch { return json({ error: 'bad_json' }, 400, req, env); }
+      const state = { hist: body.hist, custom: body.custom };
+      if (!Number.isInteger(body.base) || body.base < 0 || !validState(state)) return json({ error: 'invalid' }, 400, req, env);
+
+      const data = JSON.stringify(state), now = new Date().toISOString();
+      /* Koşullu yazma: yalnızca istemcinin gördüğü sürüm hâlâ güncelse kaydeder. */
+      const res = body.base === 0
+        ? await env.DB.prepare('INSERT INTO state (id, v, data, updated) VALUES (1, 1, ?, ?) ON CONFLICT(id) DO NOTHING').bind(data, now).run()
+        : await env.DB.prepare('UPDATE state SET v = v + 1, data = ?, updated = ? WHERE id = 1 AND v = ?').bind(data, now, body.base).run();
+      if (!res.meta.changes) return json({ error: 'conflict', ...(await readState(env)) }, 409, req, env);
+      return json({ v: body.base + 1, updated: now }, 200, req, env);
+    }
+
+    return json({ error: 'method' }, 405, req, env);
+  },
+};

@@ -57,6 +57,8 @@ button.small{padding:5px 10px;font-size:.82rem}
 button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .weeks{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .weeks span{color:var(--muted);font-size:.85rem;margin-right:4px}
+.weeks .sync{margin-left:auto}
+.weeks .sync.bad{color:var(--warn)}
 .targets{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .target{border-left:4px solid var(--samet);background:var(--surface);padding:10px 14px;border-radius:0 8px 8px 0}
 .target.r{border-left-color:var(--rase)}
@@ -399,10 +401,52 @@ if(typeof module!=='undefined')module.exports={validRecipe,B,S,D,Z,generate,buil
 /* ===== ARAYÜZ ===== */
 if(typeof document!=='undefined'){
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-let hist=[],cur=0,shopOpen=false,custom=[];
-try{const c=JSON.parse(localStorage.getItem('beslenme-custom')||'[]');if(Array.isArray(c))c.forEach(r=>{const v=validRecipe({...r,two_day:r.two},r.kind);if(v&&typeof r.id==='string'){v.id=r.id;custom.push(v);addCustom(v)}})}catch(e){}
-try{const h=JSON.parse(localStorage.getItem('beslenme-hist')||'[]');if(Array.isArray(h)&&h.every(w=>w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d])))hist=h}catch(e){}
-function save(){try{localStorage.setItem('beslenme-hist',JSON.stringify(hist));localStorage.setItem('beslenme-custom',JSON.stringify(custom))}catch(e){}}
+/* Veri Cloudflare Worker + D1'de tutulur; localStorage çevrimdışı önbellektir. ver = sunucudan son görülen sürüm, dirty = gönderilmemiş değişiklik. */
+const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost:8787':'https://beslenme-api.WORKERS_SUBDOMAIN.workers.dev';
+const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let hist=[],cur=0,shopOpen=false,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
+const validHist=h=>Array.isArray(h)&&h.every(w=>w&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]));
+function loadCustom(c){custom=[];if(Array.isArray(c))c.forEach(r=>{const v=validRecipe({...r,two_day:r.two},r.kind);if(v&&typeof r.id==='string'){v.id=r.id;custom.push(v);addCustom(v)}})}
+loadCustom(lsGet('beslenme-custom',[]));
+{const h=lsGet('beslenme-hist',[]);if(validHist(h))hist=h}
+function saveLocal(){lsSet('beslenme-hist',hist);lsSet('beslenme-custom',custom);lsSet('beslenme-ver',ver);lsSet('beslenme-dirty',dirty)}
+function save(){dirty=true;saveLocal();push()}
+const SYNC={init:['Eşitleniyor…',0],ok:['☁︎ Bulutla eşitlendi',0],nopin:['Salt okunur: kaydetmek için PIN girin',1],badpin:['PIN hatalı',1],off:['Çevrimdışı: bu cihazdaki kopya',1]};
+function syncSpan(){const s=SYNC[sync];return '<span id="sync" class="sync'+(s[1]?' bad':'')+'">'+s[0]+'</span>'}
+function syncHTML(){return syncSpan()+'<button class="small" id="pin">'+(pin?'PIN değiştir':'PIN gir')+'</button>'}
+function setSync(s){sync=s;const el=$('sync');if(el)el.outerHTML=syncSpan()}
+/* Sunucudaki durumu benimser (sunucu tek doğru kaynaktır). */
+function adopt(d){
+  const keep=custom;loadCustom(d.custom);
+  if(!validHist(d.hist)||!d.hist.length){custom=keep;return false}
+  hist=d.hist;ver=d.v;dirty=false;cur=hist.length-1;saveLocal();render();return true;
+}
+/* Gönderimler sıraya alınır; böylece art arda iki değişiklik aynı sürüm üzerine yazmaya çalışmaz. */
+let queue=Promise.resolve();
+function push(){queue=queue.then(doPush);return queue}
+async function doPush(){
+  if(!dirty)return;
+  if(!pin){setSync('nopin');return}
+  try{
+    const r=await fetch(API+'/api/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Pin':pin},body:JSON.stringify({base:ver,hist,custom})});
+    if(r.status===401){setSync('badpin');return}
+    const d=await r.json();
+    if(r.status===409){if(adopt(d))toast('Başka cihazda değişiklik vardı; güncel plan yüklendi');setSync('ok');return}
+    if(!r.ok)throw new Error(r.status);
+    ver=d.v;dirty=false;saveLocal();setSync('ok');
+  }catch(e){setSync('off')}
+}
+async function pull(){
+  try{
+    const r=await fetch(API+'/api/state',{cache:'no-store'});if(!r.ok)throw new Error(r.status);
+    const d=await r.json();
+    if(d.v===0){ver=0;if(hist.length){dirty=true;saveLocal();await push()}return}   // sunucu boş: bu cihazdaki geçmişi yükle
+    if(d.v===ver){if(dirty)await push();else setSync(pin?'ok':'nopin');return} // sunucuda yenilik yok
+    const lost=dirty&&d.v!==ver;
+    if(adopt(d)){setSync(pin?'ok':'nopin');if(lost)toast('Başka cihazda değişiklik vardı; bu cihazdaki kaydedilmemiş değişiklik yerine güncel plan yüklendi')}
+  }catch(e){setSync('off')}
+}
 function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,3200)}
 const amt=(k,v)=>{if(!v)return '—';const u=F[k].u||'g';return nf(v)+' '+u};
 const r0=v=>Math.round(v);
@@ -420,7 +464,7 @@ function mealHTML(label,rec,ing,days,isDinner,pi,k){
 }
 function render(){
   const w=hist[cur],plans=build(w);
-  $('weeks').innerHTML='<span>Geçmiş haftalar:</span>'+hist.map((x,i)=>'<button class="small" data-w="'+i+'" aria-pressed="'+(i===cur)+'">Hafta '+x.no+'</button>').join('')+'<button class="small" id="reset">Geçmişi sıfırla</button>';
+  $('weeks').innerHTML='<span>Geçmiş haftalar:</span>'+hist.map((x,i)=>'<button class="small" data-w="'+i+'" aria-pressed="'+(i===cur)+'">Hafta '+x.no+'</button>').join('')+'<button class="small" id="reset">Geçmişi sıfırla</button>'+syncHTML();
   $('targets').innerHTML='<div class="target"><b>Samet</b><div>'+T.s.lo+'–'+T.s.hi+' kcal · en az '+T.s.pmin+' g protein (ilk 4 haftanın porsiyonlarından çıkarıldı)</div></div><div class="target r"><b>Raşe</b><div>'+T.r.lo+'–'+T.r.hi+' kcal · 95–110 g protein hedefi</div></div>';
   let h='<h2>HAFTA '+w.no+'</h2>';
   plans.forEach((p,i)=>{const n=p.days.length;
@@ -455,11 +499,13 @@ document.addEventListener('click',e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.w!==undefined){cur=+t.dataset.w;render()}
   else if(t.id==='reset'){if(t.dataset.sure){hist=[generate([])];cur=0;save();render();toast('Geçmiş silindi, Hafta 5 yeniden hazırlandı')}else{t.dataset.sure=1;t.textContent='Emin misin? Tekrar tıkla'}}
+  else if(t.id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
   else if(t.id==='copy'){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')})}
 });
 $('btnPdf').onclick=()=>{shopOpen=true;render();setTimeout(()=>window.print(),50)};
-if(!hist.length){hist.push(generate([]));save()}
-cur=hist.length-1;render();
+if(hist.length){cur=hist.length-1;render()}else $('menu').innerHTML='<p class="note">Plan yükleniyor…</p>';
+pull().then(()=>{if(!hist.length){hist.push(generate([]));cur=0;save();render()}});
+addEventListener('online',()=>{if(dirty)push()});
 }
 </script>
 </body>
