@@ -108,6 +108,12 @@ td.warn{background:var(--warn-bg);color:var(--warn);font-weight:700}
 .shop small{color:var(--muted)}
 .shop input:checked + span{text-decoration:line-through;color:var(--muted)}
 textarea{width:100%;min-height:160px;font:13px/1.5 ui-monospace,Menlo,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+#ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) - 48px);transform:translateX(-50%);width:40px;height:40px;border-radius:99px;display:grid;place-items:center;background:var(--surface);color:var(--accent);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:9;pointer-events:none}
+#ptr svg{transition:transform .2s}
+#ptr.ready svg{transform:rotate(180deg)}
+#ptr.spin svg{animation:ptrspin .8s linear infinite}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
+@media print{#ptr{display:none!important}}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;max-width:90vw;z-index:9}
 @media (max-width:640px){.bar{position:static}}
 </style>
@@ -136,6 +142,7 @@ textarea{width:100%;min-height:160px;font:13px/1.5 ui-monospace,Menlo,monospace;
   <section class="card" id="flex"></section>
 </div>
 <div id="toast" hidden></div>
+<div id="ptr" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
 
 <script>
 /* ===== BESİN VERİTABANI: 100 g/ml başına (u:'adet'/'ölçek' ise birim başına) [kcal, protein, karb, yağ, lif] ===== */
@@ -565,6 +572,16 @@ if(hist.length){cur=hist.length-1;render()}else $('menu').innerHTML='<p class="n
 pull().then(()=>{if(!hist.length){hist.push(generate([]));cur=0;save();render()}
   if(wantPdf){toast('Yazdırma penceresi açılmazsa PDF Olarak İndir’e dokunun');printNow()}}); // sunucudaki güncel plan geldikten sonra yazdır
 addEventListener('online',()=>{if(dirty)push()});
+/* Aşağı çekip yenile: tarayıcılar bunu kendisi yapar, yalnızca ana ekran uygulamasında (standalone) etkin. */
+if(navigator.standalone===true||matchMedia('(display-mode: standalone)').matches){
+  const ind=$('ptr'),MAX=90,AT=64;let y0=null,d=0;
+  const pos=v=>ind.style.transform='translate(-50%,'+v+'px)';
+  addEventListener('touchstart',e=>{y0=scrollY<=0&&e.touches.length===1?e.touches[0].clientY:null;d=0},{passive:true});
+  addEventListener('touchmove',e=>{if(y0===null)return;d=Math.max(0,Math.min((e.touches[0].clientY-y0)*0.5,MAX));
+    if(scrollY>0&&d===0){y0=null;return}ind.style.transition='none';pos(d);ind.classList.toggle('ready',d>=AT)},{passive:true});
+  addEventListener('touchend',()=>{if(y0===null)return;y0=null;ind.style.transition='transform .2s';
+    if(d>=AT){pos(AT);ind.classList.remove('ready');ind.classList.add('spin');setTimeout(()=>location.reload(),150)}else pos(0)},{passive:true});
+}
 }
 </script>
 </body>
