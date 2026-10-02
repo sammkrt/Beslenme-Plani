@@ -40,7 +40,9 @@ html{color-scheme:light dark}
   .meal,.prep,tr,.card h2{break-inside:avoid}
   .plan{overflow:visible}
   .plan-head,.prep,.badge,.qc span,td.warn{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .chev{display:none!important}
+  .chev,.dayf{display:none!important}
+  .plan.off{display:block!important}
+  tr.sel td{background:none;font-weight:inherit}
   .plan.closed .meal{display:flex!important}
   .plan-head{padding-right:16px}
   #shop,#nutri{break-before:page}
@@ -91,6 +93,11 @@ td.n,th.n{text-align:right;white-space:nowrap;width:1%;padding-left:14px}
 .cs{color:var(--samet);font-weight:600}.cr{color:var(--rase);font-weight:600}
 tr.sum td{border-bottom:0;font-size:.85rem;color:var(--muted)}
 tr.avg td{font-weight:700;border-top:2px solid var(--line)}
+tr.sel td{background:var(--soft);font-weight:700}
+.dayf{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px;max-width:520px}
+.dayf button{padding:7px 0;min-height:36px}
+.dayf button.today{box-shadow:inset 0 -3px 0 var(--accent)}
+.plan.off{display:none}
 td.warn{background:var(--warn-bg);color:var(--warn);font-weight:700}
 .prep{background:var(--soft);border-radius:8px;padding:10px 14px;font-size:.92rem}
 .prep ol{margin:6px 0 0;padding-left:20px}
@@ -466,9 +473,13 @@ function setSync(s){sync=s;const el=$('sync');if(el)el.outerHTML=syncSpan()}
 function adopt(d){
   const keep=custom;loadCustom(d.custom);
   if(!validHist(d.hist)||!d.hist.length){custom=keep;return false}
-  hist=d.hist;ver=d.v;dirty=false;cur=hist.length-1;saveLocal();render();return true;
+  hist=d.hist;ver=d.v;dirty=false;cur=hist.length-1;day=defDay();saveLocal();render();return true;
 }
 /* Gönderimler sıraya alınır; böylece art arda iki değişiklik aynı sürüm üzerine yazmaya çalışmaz. */
+/* Gün filtresi: null = tüm hafta. Güncel haftada bugün, geçmiş haftalarda tüm hafta seçili gelir. */
+const today=()=>(new Date().getDay()+6)%7; // Pazartesi = 0
+const defDay=()=>cur===hist.length-1?today():null;
+let day=null;
 let queue=Promise.resolve(),swapSeen={},closed=lsGet('beslenme-closed',[]); // kapalı BESLENME kartları (yalnızca bu cihaz)
 if(!Array.isArray(closed))closed=[];
 function push(){queue=queue.then(doPush);return queue}
@@ -514,10 +525,11 @@ function render(){
   const w=hist[cur],plans=build(w);
   $('weeks').innerHTML='<span>Geçmiş haftalar:</span>'+hist.map((x,i)=>'<button class="small" data-w="'+i+'" aria-pressed="'+(i===cur)+'">Hafta '+x.no+'</button>').join('')+'<button class="small" id="reset">Geçmişi sıfırla</button>'+syncHTML();
   $('targets').innerHTML='<div class="target"><b>Samet</b><div>'+T.s.lo+'–'+T.s.hi+' kcal · en az '+T.s.pmin+' g protein (ilk 4 haftanın porsiyonlarından çıkarıldı)</div></div><div class="target r"><b>Raşe</b><div>'+T.r.lo+'–'+T.r.hi+' kcal · 95–110 g protein hedefi</div></div>';
-  let h='<h2>HAFTA '+w.no+'</h2>';
+  let h='<h2>HAFTA '+w.no+'</h2><div class="dayf" role="group" aria-label="Güne göre filtrele">'+
+    ['Tümü','Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map((l,j)=>{const d=j?j-1:null;return '<button class="small'+(cur===hist.length-1&&d===today()?' today':'')+'" data-day="'+(d===null?'':d)+'" aria-pressed="'+(day===d)+'">'+l+'</button>'}).join('')+'</div>';
   plans.forEach((p,i)=>{const n=p.days.length;
-    const op=!closed.includes(i);
-    h+='<article class="plan'+(op?'':' closed')+'" data-plan="'+i+'"><div class="plan-head"><span class="no">BESLENME – '+(i+1)+' –</span><span class="freq">Haftada '+n+' gün</span><span class="days">'+p.days.map(d=>DAYS[d]).join(' – ')+'</span>'+
+    const show=day===null||p.days.includes(day),op=day!==null||!closed.includes(i); // seçilen günün kartı hep açık gelir
+    h+='<article class="plan'+(op?'':' closed')+(show?'':' off')+'" data-plan="'+i+'"><div class="plan-head"><span class="no">BESLENME – '+(i+1)+' –</span><span class="freq">Haftada '+n+' gün</span><span class="days">'+p.days.map(d=>DAYS[d]).join(' – ')+'</span>'+
       '<button class="chev" aria-expanded="'+op+'" aria-label="BESLENME '+(i+1)+' göster/gizle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>';
     h+=mealHTML('Kahvaltı',ALL[p.b],p.ing.b,n,false,i,'b')+mealHTML('Ara öğün',ALL[p.s],p.ing.s,n,false,i,'s')+mealHTML('Akşam yemeği',ALL[p.d],p.ing.d,n,true,i,'d')+'</article>'});
   $('menu').innerHTML=h;
@@ -527,7 +539,7 @@ function render(){
   ['s','r'].forEach(k=>{const t=T[k],av=[0,0,0,0,0];
     nh+='<div><h3 class="'+(k==='s'?'cs':'cr')+'">'+t.name.toUpperCase()+'</h3><div class="tscroll"><table><thead><tr><th>Gün</th><th class="n">Kalori</th><th class="n">Protein</th><th class="n">Karb.</th><th class="n">Yağ</th><th class="n">Lif</th></tr></thead><tbody>';
     rows[k].forEach((m,d)=>{m.forEach((v,j)=>av[j]+=v/7);const wk=m[0]<t.lo-25||m[0]>t.hi+25,wp=m[1]<t.pmin-3;if(wk||wp)warn++;
-      nh+='<tr><td>'+DAYS[d]+'</td><td class="n'+(wk?' warn':'')+'">'+r0(m[0])+' kcal</td><td class="n'+(wp?' warn':'')+'">'+r0(m[1])+' g</td><td class="n">'+r0(m[2])+' g</td><td class="n">'+r0(m[3])+' g</td><td class="n">'+r0(m[4])+' g</td></tr>'});
+      nh+='<tr'+(d===day?' class="sel"':'')+'><td>'+DAYS[d]+'</td><td class="n'+(wk?' warn':'')+'">'+r0(m[0])+' kcal</td><td class="n'+(wp?' warn':'')+'">'+r0(m[1])+' g</td><td class="n">'+r0(m[2])+' g</td><td class="n">'+r0(m[3])+' g</td><td class="n">'+r0(m[4])+' g</td></tr>'});
     nh+='<tr class="avg"><td>Haftalık ortalama</td><td class="n">'+r0(av[0])+' kcal</td><td class="n">'+r0(av[1])+' g</td><td class="n">'+r0(av[2])+' g</td><td class="n">'+r0(av[3])+' g</td><td class="n">'+r0(av[4])+' g</td></tr></tbody></table></div></div>'});
   const prev=hist[cur-1],rep=prev?w.plans.filter(p=>prev.plans.some(q=>q.d===p.d)).length:0;
   const qc=[['7 gün',plans.reduce((a,p)=>a+p.days.length,0)===7],['4 akşam pişirmesi',true],['Aynı yemek, farklı porsiyon',true],['Kalori ve protein hedefte',warn===0],['Geçen haftanın akşamı tekrar etmiyor',rep===0]];
@@ -543,15 +555,16 @@ function renderShop(w,plans){
   h+='<div><button id="copy">Listeyi kopyala (Apple Notes)</button></div><textarea id="shoptxt" readonly aria-label="Kopyalanabilir alışveriş listesi"></textarea>';
   el.innerHTML=h;$('shoptxt').value=shopText(w,plans);
 }
-$('btnNew').onclick=()=>{hist.push(generate(hist));if(hist.length>26)hist.shift();cur=hist.length-1;save();render();toast('Hafta '+hist[cur].no+' hazır');window.scrollTo({top:0})};
+$('btnNew').onclick=()=>{hist.push(generate(hist));if(hist.length>26)hist.shift();cur=hist.length-1;day=today();save();render();toast('Hafta '+hist[cur].no+' hazır');window.scrollTo({top:0})};
 $('btnShop').onclick=()=>{shopOpen=true;render();$('shop').scrollIntoView({behavior:'smooth',block:'start'})};
 document.addEventListener('click',e=>{
   const t=e.target,head=t.closest&&t.closest('.plan-head');
   if(head){const a=head.parentNode,i=+a.dataset.plan,c=a.classList.toggle('closed');
     head.querySelector('.chev').setAttribute('aria-expanded',!c);
     closed=c?[...closed,i]:closed.filter(x=>x!==i);lsSet('beslenme-closed',closed);return}
-  if(t.dataset&&t.dataset.w!==undefined){cur=+t.dataset.w;render()}
-  else if(t.id==='reset'){if(t.dataset.sure){hist=[generate([])];cur=0;save();render();toast('Geçmiş silindi, Hafta 5 yeniden hazırlandı')}else{t.dataset.sure=1;t.textContent='Emin misin? Tekrar tıkla'}}
+  if(t.dataset&&t.dataset.w!==undefined){cur=+t.dataset.w;day=defDay();render()}
+  else if(t.dataset&&t.dataset.day!==undefined){day=t.dataset.day===''?null:+t.dataset.day;render()}
+  else if(t.id==='reset'){if(t.dataset.sure){hist=[generate([])];cur=0;day=today();save();render();toast('Geçmiş silindi, Hafta 5 yeniden hazırlandı')}else{t.dataset.sure=1;t.textContent='Emin misin? Tekrar tıkla'}}
   else if(t.dataset&&t.dataset.swap){const[i,k]=t.dataset.swap.split(':'),p=hist[cur].plans[+i],key=hist[cur].no+':'+t.dataset.swap,seen=swapSeen[key]||(swapSeen[key]=new Set());
     seen.add(p[k]);const id=swapPick(hist,cur,+i,k,seen);if(!id){toast('Bu öğün için uygun başka tarif yok');return}
     const old=ALL[p[k]].name;p[k]=id;seen.add(id);save();render();toast(old+' → '+ALL[id].name)}
@@ -568,8 +581,8 @@ $('btnPdf').onclick=()=>{
 $('pdfClose').onclick=()=>{$('pdfhelp').hidden=true};
 const wantPdf=new URLSearchParams(location.search).has('pdf');
 if(wantPdf)history.replaceState(null,'',location.pathname); // yenileyince tekrar yazdırmasın
-if(hist.length){cur=hist.length-1;render()}else $('menu').innerHTML='<p class="note">Plan yükleniyor…</p>';
-pull().then(()=>{if(!hist.length){hist.push(generate([]));cur=0;save();render()}
+if(hist.length){cur=hist.length-1;day=today();render()}else $('menu').innerHTML='<p class="note">Plan yükleniyor…</p>';
+pull().then(()=>{if(!hist.length){hist.push(generate([]));cur=0;day=today();save();render()}
   if(wantPdf){toast('Yazdırma penceresi açılmazsa PDF Olarak İndir’e dokunun');printNow()}}); // sunucudaki güncel plan geldikten sonra yazdır
 addEventListener('online',()=>{if(dirty)push()});
 /* Aşağı çekip yenile: tarayıcılar bunu kendisi yapar, yalnızca ana ekran uygulamasında (standalone) etkin. */
