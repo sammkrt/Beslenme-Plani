@@ -65,7 +65,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req, env) });
     if (url.pathname !== '/api/state') return json({ error: 'not_found' }, 404, req, env);
 
-    if (req.method === 'GET') return json(await readState(env), 200, req, env);
+    if (req.method === 'GET' || req.method === 'HEAD') return json(await readState(env), 200, req, env);
 
     if (req.method === 'PUT') {
       if (!(await pinOk(req.headers.get('X-Pin'), env.PIN))) {
