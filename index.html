@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1f6b4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Beslenme">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Samet &amp; Raşe Beslenme Planı</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: tek sütun, üstte yapışkan eylem çubuğu; her BESLENME bir kart, öğünler kart içinde Malzeme | Samet | Raşe tablosu. */
+:root{
+  --bg:#f3f5f1; --surface:#ffffff; --ink:#1d2620; --muted:#5d6b62; --line:#dbe2da;
+  --accent:#1f6b4f; --accent-ink:#ffffff; --samet:#1b5f7a; --rase:#8a2f5c;
+  --soft:#e8efe7; --warn:#b4541a; --warn-bg:#fbe9dc; --ok:#1f6b4f;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",sans-serif;
+  --body:"Figtree","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#131815; --surface:#1c231f; --ink:#e8eee9; --muted:#9aa89f; --line:#2f3a33;
+  --accent:#6fcf9f; --accent-ink:#0f1a14; --samet:#7cc4e0; --rase:#eb9cc2;
+  --soft:#242d28; --warn:#f0a36b; --warn-bg:#3a2617; --ok:#6fcf9f; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#131815; --surface:#1c231f; --ink:#e8eee9; --muted:#9aa89f; --line:#2f3a33;
+  --accent:#6fcf9f; --accent-ink:#0f1a14; --samet:#7cc4e0; --rase:#eb9cc2;
+  --soft:#242d28; --warn:#f0a36b; --warn-bg:#3a2617; --ok:#6fcf9f; color-scheme:dark }
+*{box-sizing:border-box}
+html{color-scheme:light dark}
+@media print{
+  :root,:root[data-theme="dark"],:root:not([data-theme="light"]){--bg:#ffffff;--surface:#ffffff;--ink:#1d2620;--muted:#5d6b62;--line:#dbe2da;--accent:#1f6b4f;--accent-ink:#ffffff;--samet:#1b5f7a;--rase:#8a2f5c;--soft:#eef3ed;--warn:#b4541a;--warn-bg:#fbe9dc;--ok:#1f6b4f;color-scheme:light}
+  .bar,.weeks,#toast,textarea,#copy,.sub{display:none!important}
+  .wrap{max-width:none;padding:0;gap:12px}
+  body{font-size:11.5px}
+  .meal,.prep,tr,.card h2{break-inside:avoid}
+  .plan{overflow:visible}
+  .plan-head,.prep,.badge,.qc span,td.warn{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #shop,#nutri{break-before:page}
+  @page{size:A4;margin:14mm}
+}
+body{margin:0;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:900px;margin:0 auto;padding-inline:16px;padding-block:20px 60px;display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(1.6rem,5vw,2.3rem);line-height:1.1;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:1.35rem;margin:0}
+h3{font-family:var(--display);font-weight:700;font-size:1.1rem;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:6px 0 0;max-width:65ch}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line)}
+button{font:600 0.92rem var(--body);border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.small{padding:5px 10px;font-size:.82rem}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.weeks{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.weeks span{color:var(--muted);font-size:.85rem;margin-right:4px}
+.targets{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.target{border-left:4px solid var(--samet);background:var(--surface);padding:10px 14px;border-radius:0 8px 8px 0}
+.target.r{border-left-color:var(--rase)}
+.target b{font-family:var(--display)}
+.target div{color:var(--muted);font-size:.88rem}
+.plan{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.plan-head{background:var(--soft);padding:14px 16px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;justify-content:space-between}
+.plan-head .no{font-family:var(--display);font-weight:700;font-size:1.2rem}
+.plan-head .freq{font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.plan-head .days{font-weight:600}
+.meal{padding:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;min-width:0}
+.eyebrow{font-size:.74rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.badge{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.06em;background:var(--accent);color:var(--accent-ink);padding:2px 7px;border-radius:4px;vertical-align:middle;margin-left:6px}
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+td.n,th.n{text-align:right;white-space:nowrap;width:1%;padding-left:14px}
+.cs{color:var(--samet);font-weight:600}.cr{color:var(--rase);font-weight:600}
+tr.sum td{border-bottom:0;font-size:.85rem;color:var(--muted)}
+tr.avg td{font-weight:700;border-top:2px solid var(--line)}
+td.warn{background:var(--warn-bg);color:var(--warn);font-weight:700}
+.prep{background:var(--soft);border-radius:8px;padding:10px 14px;font-size:.92rem}
+.prep ol{margin:6px 0 0;padding-left:20px}
+.prep .batch{margin-top:8px;font-size:.86rem;color:var(--muted)}
+.note{font-size:.88rem;color:var(--muted);max-width:70ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.qc{display:flex;flex-wrap:wrap;gap:6px}
+.qc span{font-size:.8rem;padding:3px 9px;border-radius:99px;background:var(--soft);color:var(--ok);font-weight:600}
+.qc span.bad{color:var(--warn);background:var(--warn-bg)}
+.shop h4{margin:12px 0 4px;font:700 .95rem var(--display)}
+.shop ul{list-style:none;margin:0;padding:0}
+.shop li{padding:5px 0;border-bottom:1px solid var(--line)}
+.shop label{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.shop input{margin-top:4px;accent-color:var(--accent)}
+.shop small{color:var(--muted)}
+.shop input:checked + span{text-decoration:line-through;color:var(--muted)}
+textarea{width:100%;min-height:160px;font:13px/1.5 ui-monospace,Menlo,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;max-width:90vw;z-index:9}
+@media (max-width:640px){.bar{position:static}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Samet &amp; Raşe – Haftalık Beslenme Planı</h1>
+    <p class="sub">Aynı tencere, iki farklı porsiyon. Plan, ilk 4 haftanın yapısını (günde 3 öğün, BESLENME grupları, protein ağırlıklı ara öğün) sürdürür; akşamlar Türk ev yemeği.</p>
+  </header>
+  <div class="bar">
+    <button class="primary" id="btnNew">Yeni Haftanın Menüsünü Hazırla</button>
+    <button id="btnShop">Market Alışveriş Listesi Oluştur</button>
+    <button id="btnPdf">PDF Olarak İndir</button>
+  </div>
+  <div class="weeks" id="weeks"></div>
+  <div class="targets" id="targets"></div>
+  <div id="menu" style="display:flex;flex-direction:column;gap:20px"></div>
+  <section class="card" id="nutri"></section>
+  <section class="card shop" id="shop" hidden></section>
+  <section class="card" id="flex"></section>
+</div>
+<div id="toast" hidden></div>
+
+<script>
+/* ===== BESİN VERİTABANI: 100 g/ml başına (u:'adet'/'ölçek' ise birim başına) [kcal, protein, karb, yağ, lif] ===== */
+const F={
+ yumurta:{n:'Yumurta',sec:'yum',u:'adet',m:[78,6.5,0.5,5.5,0]},
+ ybeyaz:{n:'Likit yumurta beyazı',sec:'yum',u:'ml',m:[48,10.5,0.7,0,0],pack:500},
+ tavuk:{n:'Tavuk göğsü (çiğ)',sec:'et',m:[110,23,0,1.8,0],prot:1,pack:100},
+ but:{n:'Derisiz tavuk but fileto (çiğ)',sec:'et',m:[125,19.5,0,5,0],prot:1,pack:100},
+ kiyma:{n:'Yağsız dana kıyma (çiğ, mager rundergehakt)',sec:'et',m:[155,21,0,8,0],prot:1,pack:100},
+ kusbasi:{n:'Yağsız dana kuşbaşı (çiğ)',sec:'et',m:[120,22,0,3.5,0],prot:1,pack:100},
+ somon:{n:'Somon fileto (çiğ)',sec:'et',m:[200,20,0,13.5,0],prot:1,pack:50},
+ levrek:{n:'Levrek / çipura fileto (çiğ)',sec:'et',m:[120,20,0,4.5,0],prot:1,pack:50},
+ ton:{n:'Ton balığı (suda, süzülmüş)',sec:'sos',m:[110,25,0,1,0],prot:1,can:110,canL:'kutu (süzülmüş ~110 g)'},
+ hindi:{n:'Hindi / tavuk füme',sec:'et',m:[105,20,1.5,2,0],prot:1,pack:50},
+ skyr:{n:'Skyr / yağsız quark',sec:'sut',m:[62,10.5,4,0.2,0],prot:1,pack:500},
+ yogurt:{n:'Yağsız yoğurt',sec:'sut',m:[40,4.3,4.8,0.2,0],pack:500},
+ kefir:{n:'Sade kefir',sec:'sut',u:'ml',m:[50,3.4,4,2,0],pack:500},
+ cottage:{n:'Cottage cheese (Hüttenkäse)',sec:'sut',m:[90,12,2.5,3.8,0],prot:1,pack:200},
+ peynir:{n:'Beyaz peynir / feta',sec:'sut',m:[260,16,1.5,21,0],pack:100},
+ bsut:{n:'Şekersiz badem / yulaf sütü',sec:'sut',u:'ml',m:[14,0.5,0.3,1.1,0.3],pack:1000},
+ ptozu:{n:'Protein tozu',sec:'ekmek',u:'ölçek',m:[118,23,2.5,1.8,0]},
+ pbar:{n:'Protein bar (15–20 g protein, ~200 kcal)',sec:'ekmek',u:'adet',m:[200,18,18,7,3]},
+ yulaf:{n:'Yulaf ezmesi',sec:'ekmek',m:[370,13,60,7,10],flex:1,pack:500},
+ ekmek:{n:'Tam buğday / çavdar ekmeği',sec:'ekmek',m:[240,10,41,3,6.5],flex:1,slice:35},
+ wasa:{n:'Wasa / karabuğday patlağı',sec:'ekmek',u:'adet',m:[35,1,7,0.3,1.2],flex:1},
+ granola:{n:'Şekersiz granola',sec:'ekmek',m:[440,10,60,17,7],flex:1,pack:100},
+ chia:{n:'Chia tohumu',sec:'kuru',m:[480,17,8,31,34],pack:50},
+ fistik:{n:'Şekersiz fıstık ezmesi',sec:'kuru',m:[610,25,12,50,7],pack:50},
+ tahin:{n:'Tahin',sec:'kuru',m:[620,20,8,56,8],pack:50},
+ zyag:{n:'Zeytinyağı',sec:'sos',m:[884,0,0,100,0],pantry:1},
+ zeytin:{n:'Zeytin',sec:'ekmek',u:'adet',m:[6,0,0.1,0.6,0.1]},
+ avokado:{n:'Avokado',sec:'sebze',m:[160,2,2,15,6.5],piece:120},
+ muz:{n:'Muz',sec:'sebze',m:[90,1.1,20,0.3,2.5],piece:110,flex:1},
+ kmeyve:{n:'Kırmızı meyve (taze / dondurulmuş)',sec:'sebze',m:[45,1,7.5,0.4,4],pack:250},
+ elma:{n:'Elma / armut',sec:'sebze',m:[54,0.3,12,0.2,2.3],piece:150},
+ domates:{n:'Domates',sec:'sebze',m:[20,0.9,3,0.2,1.2],piece:110},
+ salatalik:{n:'Salatalık',sec:'sebze',m:[14,0.7,2,0.1,0.7],piece:350},
+ marul:{n:'Marul / roka / yeşillik',sec:'sebze',m:[16,1.3,1.5,0.2,1.5],pack:100},
+ biber:{n:'Biber (kırmızı / sivri)',sec:'sebze',m:[28,1,5,0.3,1.8],piece:150},
+ sogan:{n:'Kuru soğan',sec:'sebze',m:[38,1.2,7.5,0.1,1.8],piece:110},
+ kabak:{n:'Kabak',sec:'sebze',m:[18,1.3,2.2,0.3,1.1],piece:250},
+ patlican:{n:'Patlıcan',sec:'sebze',m:[24,1,3.5,0.2,3],piece:300},
+ havuc:{n:'Havuç',sec:'sebze',m:[36,0.8,7,0.2,2.8],piece:80},
+ mantar:{n:'Mantar',sec:'sebze',m:[24,3,1,0.4,1.5],pack:250},
+ ispanak:{n:'Taze ıspanak',sec:'sebze',m:[25,2.8,1,0.4,2.2],pack:100},
+ tfasulye:{n:'Taze fasulye (sperziebonen)',sec:'sebze',m:[30,2,4,0.2,3.2],pack:250},
+ bezelye:{n:'Bezelye (dondurulmuş)',sec:'sebze',m:[78,5.5,10,0.5,5.5],pack:250},
+ patates:{n:'Patates (çiğ)',sec:'sebze',m:[82,2,17.5,0.1,1.8],flex:1,pack:250},
+ passata:{n:'Domates püresi (passata / küp domates)',sec:'sos',m:[30,1.4,5,0.2,1.2],pack:500},
+ salca:{n:'Domates / biber salçası',sec:'sos',m:[85,4.5,15,0.5,4],pantry:1},
+ pirinc:{n:'Basmati pirinç (çiğ)',sec:'tahil',m:[352,8,78,0.8,1.2],flex:1,pack:100},
+ bulgur:{n:'Pilavlık bulgur (kuru)',sec:'tahil',m:[342,12,64,1.5,11],flex:1,pack:100},
+ kmercimek:{n:'Kırmızı mercimek (kuru)',sec:'tahil',m:[340,24,50,1.5,11],pack:100},
+ nohut:{n:'Nohut (konserve, süzülmüş – pişmiş)',sec:'tahil',m:[125,7,16,2.5,6],can:240,canL:'kutu (400 g)'},
+ kfasulye:{n:'Kuru fasulye (konserve, süzülmüş – pişmiş)',sec:'tahil',m:[105,7,14,0.6,6.5],can:240,canL:'kutu (400 g)'},
+ barbunya:{n:'Barbunya (konserve, süzülmüş – pişmiş)',sec:'tahil',m:[110,7.5,15,0.6,6.5],can:240,canL:'kutu (400 g)'},
+ karnabahar:{n:'Karnabahar',sec:'sebze',m:[25,1.9,3,0.3,2],pack:500},
+ brokoli:{n:'Brokoli',sec:'sebze',m:[34,2.8,4,0.4,2.6],pack:250},
+ pirasa:{n:'Pırasa',sec:'sebze',m:[31,1.5,5,0.3,1.8],piece:200},
+ lahana:{n:'Beyaz lahana',sec:'sebze',m:[25,1.3,4,0.1,2.5],pack:500},
+ ymercimek:{n:'Yeşil mercimek (konserve, süzülmüş – pişmiş)',sec:'tahil',m:[100,8,13,0.5,5],can:240,canL:'kutu (400 g)'},
+ makarna:{n:'Tam buğday makarna (çiğ)',sec:'tahil',m:[350,13,65,2.5,8],flex:1,pack:100},
+ hkiyma:{n:'Tavuk / hindi kıyma (çiğ)',sec:'et',m:[130,20,0,5.5,0],prot:1,pack:100},
+ morina:{n:'Beyaz balık fileto (morina / kabeljauw, çiğ)',sec:'et',m:[82,18,0,0.8,0],prot:1,pack:50},
+ ceviz:{n:'Ceviz içi',sec:'kuru',m:[670,15,7,65,7],pack:50},
+ lavas:{n:'Tam buğday lavaş (60 g)',sec:'ekmek',u:'adet',m:[180,6,30,3.5,4]},
+ tursu:{n:'Turşu',sec:'sos',m:[15,0.5,2,0.1,1],pantry:1}
+};
+const SECS=[['sebze','🥬 SEBZE & MEYVE'],['et','🥩 ET & BALIK'],['yum','🥚 YUMURTA'],['sut','🥛 SÜT ÜRÜNLERİ'],['ekmek','🍞 EKMEK & KAHVALTILIK'],['tahil','🍚 PİRİNÇ / BULGUR / MAKARNA / BAKLİYAT'],['kuru','🌰 KURUYEMİŞ & TOHUMLAR'],['sos','🥫 SOS / KONSERVE / BAHARAT']];
+const T={s:{name:'Samet',lo:1700,hi:1900,pmin:130},r:{name:'Raşe',lo:1400,hi:1500,pmin:95}};
+const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+const SLOTS=[[0,1],[2,3],[4,5],[6]];
+/* salata: [besin, Samet, Raşe, 1=servis anında (toplu pişirmeye girmez)] */
+const SAL=(a,b)=>[['domates',100,100,1],['salatalik',100,100,1],['marul',40,40,1],['zyag',a,b,1]];
+const SOG=[['domates',100,100,1],['salatalik',100,100,1]];
+
+/* ===== KAHVALTILAR ===== */
+const B=[
+{id:'b1',name:'Menemen + peynir tabağı',ing:[['yumurta',3,2],['domates',150,150],['biber',80,80],['zyag',5,5],['ekmek',55,45],['cottage',75,75],['salatalik',100,100],['zeytin',8,6]],
+ steps:['Biberi 5 g zeytinyağında 2–3 dk çevirin, doğranmış domatesi ekleyip suyunu çekene kadar pişirin.','Yumurtaları kırıp hafifçe karıştırın; pul biber, karabiber ekleyin.','Ekmek, cottage cheese, salatalık ve zeytinle servis edin.']},
+{id:'b2',name:'Geceden yulaf kasesi + haşlanmış yumurta',ing:[['yulaf',40,35],['chia',10,10],['muz',50,50],['ptozu',1,1],['bsut',150,150],['kmeyve',100,100],['fistik',15,10],['yumurta',2,1]],
+ steps:['Yulaf, chia, ezilmiş muz, protein tozu ve sütü kavanozda karıştırıp geceden dolaba koyun.','Sabah üzerine kırmızı meyve ve fıstık ezmesi ekleyin.','Önce haşlanmış yumurtayı (zerdeçal-karabiber), sonra kaseyi yiyin.']},
+{id:'b3',name:'Avokadolu haşlanmış yumurta tabağı',ing:[['yumurta',3,2],['avokado',55,45],['ekmek',55,45],['cottage',70,70],['domates',100,100],['salatalik',100,100]],
+ steps:['Yumurtaları 8–9 dk haşlayın; zerdeçal ve karabiber serpin.','Avokadoyu limon, tuz, karabiberle ezip ekmeğe sürün.','Cottage cheese ve söğüş sebzeyle servis edin.']},
+{id:'b4',name:'Proteinli yoğurt kasesi',ing:[['skyr',250,200],['ptozu',1,0.5],['yulaf',40,30],['chia',10,5],['muz',55,50],['kmeyve',100,100],['tahin',15,10]],
+ steps:['Skyr ve protein tozunu pürüzsüz olana kadar karıştırın.','Yulaf ve chiayı ekleyin; 5 dk bekletin.','Üzerine muz, kırmızı meyve ve tahin gezdirin.']},
+{id:'b5',name:'Peynirli-otlu pankek',ing:[['yumurta',2,2],['ybeyaz',100,50],['peynir',40,30],['yulaf',40,30],['zyag',5,4],['avokado',45,0],['elma',100,100],['domates',100,100],['salatalik',100,100]],
+ steps:['Yumurta, yumurta beyazı, ufalanmış peynir, blenderdan geçirilmiş yulaf, doğranmış dereotu-maydanoz ve ½ ÇK kabartma tozunu çırpın.','Yapışmaz tavada ölçülü zeytinyağıyla arkalı önlü pişirin.','Söğüş sebze, (Samet için) avokado ve meyveyle servis edin.']},
+{id:'b6',name:'Mantarlı-ıspanaklı omlet',ing:[['yumurta',2,2],['ybeyaz',150,80],['peynir',35,25],['mantar',80,80],['ispanak',50,50],['zyag',5,5],['ekmek',70,45],['zeytin',8,4],['domates',100,100],['salatalik',100,100]],
+ steps:['Mantarı zeytinyağında suyunu çekene kadar soteleyin, ıspanağı ekleyip söndürün.','Çırpılmış yumurta + yumurta beyazını dökün, peyniri serpip kapağı kapalı pişirin.','Ekmek, zeytin ve söğüşle servis edin.']},
+{id:'b7',name:'Hindi fümeli peynirli tost + yumurta',ing:[['ekmek',75,60],['peynir',40,30],['hindi',50,40],['yumurta',2,2],['domates',100,100],['salatalik',100,100]],
+ steps:['Ekmeğin arasına peynir ve hindi fümeyi koyup yağsız tost makinesinde kızartın.','Yumurtaları haşlayın.','Söğüş sebze ve yeşillikle servis edin.']}
+,
+{id:'b8',name:'Ispanaklı yumurta + yoğurt',ing:[['yumurta',3,2],['ispanak',150,150],['sogan',30,30],['zyag',5,5],['yogurt',100,100],['ekmek',60,45],['peynir',30,25]],
+ steps:['Soğanı zeytinyağında kavurun, ıspanağı ekleyip söndürün.','Ortasını açıp yumurtaları kırın, kapağı kapalı 3–4 dk pişirin; pul biber serpin.','Yanında yoğurt, peynir ve ekmekle servis edin.']},
+{id:'b9',name:'Yumurtalı hindi fümeli lavaş dürüm',ing:[['lavas',1,1],['yumurta',2,2],['ybeyaz',100,0],['hindi',50,40],['peynir',30,20],['domates',100,100],['marul',40,40],['salatalik',100,100]],
+ steps:['Yumurtaları (Samet için yumurta beyazıyla) yağsız yapışmaz tavada omlet yapın.','Lavaşa omlet, hindi füme, peynir, domates ve marulu koyup sarın.','Tavada iki yüzünü 1’er dk ısıtın; salatalıkla servis edin.']},
+{id:'b10',name:'Tahinli muzlu sıcak yulaf + yumurta',ing:[['yulaf',45,35],['bsut',200,200],['ptozu',1,1],['muz',60,50],['tahin',12,8],['ceviz',10,0],['yumurta',1,1]],
+ steps:['Yulafı sütle 3–4 dk pişirin; ocaktan alıp protein tozunu karıştırın.','Üzerine muz, tahin, tarçın (Samet için ceviz) ekleyin.','Önce haşlanmış yumurtayı, sonra kaseyi yiyin.']}
+];
+/* ===== ARA ÖĞÜNLER ===== */
+const S=[
+{id:'s1',name:'Kefirli protein smoothie',ing:[['kefir',250,200],['ptozu',1,1],['kmeyve',150,100],['chia',20,10]],steps:['Tüm malzemeyi blenderdan geçirin; kıvamına göre su ekleyin.']},
+{id:'s2',name:'Skyr + granola kasesi',ing:[['skyr',250,150],['ptozu',1,1],['kmeyve',100,100],['granola',30,20]],steps:['Skyr ve protein tozunu karıştırın (isteğe göre 1 TK kakao), üzerine meyve ve granola ekleyin.']},
+{id:'s3',name:'Ton balıklı salata + wasa',ing:[['ton',120,100],['domates',100,100],['salatalik',100,100],['marul',50,50],['zyag',10,8],['wasa',3,2]],steps:['Süzülmüş tonu doğranmış sebzelerle karıştırın; zeytinyağı ve limonla tatlandırın. Wasa ile yiyin.']},
+{id:'s4',name:'Tarçınlı elmalı skyr',ing:[['skyr',200,200],['ptozu',1,0.5],['elma',150,120],['fistik',20,12]],steps:['Skyr ve protein tozunu karıştırın; doğranmış elma, fıstık ezmesi ve tarçınla servis edin.']},
+{id:'s5',name:'Wasa üstü cottage + füme hindi',ing:[['wasa',4,3],['cottage',120,120],['hindi',60,50],['avokado',50,30],['salatalik',100,100],['havuc',80,80]],steps:['Wasaların üzerine ezilmiş avokado, cottage cheese ve füme hindi koyun; salatalık ve havuç dilimleriyle yiyin.']},
+{id:'s6',name:'Kefir + protein bar + meyve',ing:[['kefir',250,200],['pbar',1,1],['muz',110,60]],steps:['Dışarıda olduğunuz günler için pratik seçenek.']}
+,
+{id:'s7',name:'Haşlanmış yumurta + cottage + sebze çubukları',ing:[['yumurta',2,2],['cottage',150,100],['havuc',100,100],['salatalik',100,100],['wasa',2,1]],steps:['Yumurtaları haşlayın; cottage cheese’i karabiber ve pul biberle tatlandırıp sebze çubukları ve wasa ile yiyin.']},
+{id:'s8',name:'Kakaolu protein puding',ing:[['skyr',250,200],['ptozu',1,1],['muz',80,50],['fistik',15,8]],steps:['Skyr, protein tozu ve 1 TK kakaoyu çırpın; muz dilimleri ve fıstık ezmesiyle servis edin.']},
+{id:'s9',name:'Hindi fümeli lavaş dürüm + kefir',ing:[['lavas',1,1],['hindi',80,60],['cottage',60,50],['marul',40,40],['domates',100,100],['kefir',200,0]],steps:['Lavaşa cottage cheese sürün; hindi füme, marul ve domatesi koyup sarın. Samet yanında kefir içer.']}
+];
+/* ===== AKŞAM YEMEKLERİ (2 GÜNLÜK) — miktarlar 1 gün / 1 kişi ===== */
+const D=[
+{id:'d1',pt:'tavuk',name:'Tavuk sote + bulgur pilavı',ing:[['tavuk',220,170],['biber',100,100],['mantar',100,100],['sogan',50,50],['domates',100,100],['zyag',8,8],['bulgur',50,40,1],['yogurt',150,150,1],...SAL(5,5)],
+ spice:['kekik','pul biber','karabiber'],steps:['Tavuğu kuşbaşı doğrayın; geniş tavada ölçülü zeytinyağıyla yüksek ateşte mühürleyin.','Soğan, biber ve mantarı ekleyip 5 dk soteleyin; domates, kekik, pul biber ekleyip 8–10 dk pişirin.','Bulguru 2 katı sıcak su ve tuzla 12 dk demleyin (yağsız).','Belirtilen bulgur, yoğurt ve salata porsiyonuyla servis edin.']},
+{id:'d2',pt:'kiyma',name:'Domates soslu fırın köfte + patates',ing:[['kiyma',200,160],['sogan',40,40],['passata',150,150],['biber',80,80],['patates',200,150],['zyag',5,5],['yogurt',100,100,1],...SAL(5,5)],
+ spice:['kimyon','karabiber','kekik'],steps:['Kıymayı rendelenmiş soğan, kimyon, karabiber, tuz ve maydanozla yoğurup köfte yapın.','Elma dilimi patates ve biberi fırın kabına dizin, köfteleri yerleştirin; zeytinyağını gezdirin.','200°C fırında 15 dk kızartın; passatayı ½ su bardağı suyla açıp üzerine dökün, 20 dk daha pişirin.','Yoğurt ve salatayla servis edin.']},
+{id:'d3',pt:'kiyma',name:'Kıymalı kabak yemeği + pirinç pilavı',ing:[['kiyma',180,150],['kabak',300,300],['sogan',50,50],['passata',100,100],['zyag',5,5],['pirinc',45,35,1],['yogurt',200,150,1],...SOG],
+ spice:['dereotu','nane','pul biber'],steps:['Kıymayı kendi yağında kavurun; soğanı ve zeytinyağını ekleyin.','Küp doğranmış kabak ve passatayı ekleyip kısık ateşte 15–20 dk (Instant Pot: 4 dk) pişirin; dereotu serpin.','Pirinci yağsız, 1,5 katı suyla demleyin.','Sarımsaklı yoğurt ve söğüşle servis edin.']},
+{id:'d4',pt:'et',name:'Etli taze fasulye + bulgur pilavı',ing:[['kusbasi',180,140],['tfasulye',250,250],['sogan',50,50],['passata',150,150],['zyag',8,8],['bulgur',45,35,1],['yogurt',150,150,1],...SAL(5,5)],
+ spice:['karabiber','pul biber'],steps:['Eti ölçülü zeytinyağında mühürleyin, soğanı ekleyip kavurun.','Fasulye, passata ve 1 su bardağı su ekleyin; düdüklüde 20 dk (normal tencerede 45–50 dk) pişirin.','Bulguru yağsız demleyin.','Yoğurt ve salatayla servis edin.']},
+{id:'d5',pt:'bakliyat',name:'Tavuklu nohut yahni + pirinç pilavı',ing:[['tavuk',200,160],['nohut',100,80],['sogan',50,50],['havuc',60,60],['passata',100,100],['salca',10,10],['zyag',5,5],['pirinc',35,30,1],['yogurt',100,100,1],...SAL(5,5)],
+ spice:['kimyon','pul biber','karabiber'],steps:['Soğanı zeytinyağında kavurun, salçayı ekleyin.','Kuşbaşı tavuk, havuç, süzülmüş nohut, passata ve 1 su bardağı suyu ekleyip 20–25 dk pişirin.','Pirinci yağsız demleyin.','Yoğurt, turşu ve salatayla servis edin.']},
+{id:'d6',pt:'bakliyat',name:'Etli kuru fasulye + pirinç pilavı',ing:[['kusbasi',130,110],['kfasulye',200,160],['sogan',50,50],['passata',100,100],['salca',15,15],['zyag',5,5],['pirinc',40,30,1],['yogurt',150,150,1],['tursu',30,30,1],...SAL(5,5)],
+ spice:['pul biber','karabiber'],steps:['Eti zeytinyağında mühürleyip soğan ve salçayla kavurun.','Passata ve 1,5 su bardağı su ekleyip et yumuşayana kadar pişirin (düdüklü 20 dk).','Süzülmüş fasulyeyi ekleyip 10 dk daha kaynatın.','Yağsız pilav, turşu, yoğurt ve salatayla servis edin.']},
+{id:'d7',pt:'tavuk',name:'Fırında domatesli-biberli tavuk but + bulgur',ing:[['but',240,190],['biber',100,100],['domates',150,150],['kabak',100,100],['sogan',50,50],['zyag',5,5],['bulgur',45,35,1],['yogurt',150,150,1],...SAL(5,5)],
+ spice:['kekik','tatlı toz biber','sarımsak tozu'],steps:['Butları 1 TK salça, yoğurttan 1 YK, kekik ve toz biberle marine edin.','İri doğranmış sebzelerle fırın kabına dizin, zeytinyağını gezdirin.','200°C fırında 35–40 dk (air fryer 180°C 22 dk) pişirin.','Yağsız bulgur pilavı, yoğurt ve salatayla servis edin.']},
+{id:'d8',pt:'kiyma',name:'Fırında kıymalı patlıcan (hafif karnıyarık) + bulgur',ing:[['kiyma',180,150],['patlican',250,250],['sogan',50,50],['biber',60,60],['passata',100,100],['zyag',8,8],['bulgur',40,35,1],['yogurt',150,150,1],['salatalik',100,100,1],['domates',100,100,1]],
+ spice:['karabiber','pul biber','nane'],steps:['Patlıcanları ikiye bölüp çizin, zeytinyağını fırçayla sürün; 200°C fırında 20 dk yumuşatın (kızartma yok).','Kıymayı soğan ve biberle kavurun, passatanın yarısını ekleyin.','Patlıcanların içine harcı doldurun, kalan passatayı sulandırıp dökün; 20 dk daha pişirin.','Bulgur ve cacık (yoğurt + salatalık + nane) ile servis edin.']},
+{id:'d9',pt:'bakliyat',name:'Mercimek çorbası + ızgara tavuk',ing:[['kmercimek',50,40],['sogan',40,40],['havuc',50,50],['salca',10,10],['zyag',5,5],['tavuk',200,160,1],['ekmek',35,30,1],['yogurt',100,100,1],...SAL(5,5)],
+ spice:['kimyon','nane','pul biber'],steps:['Soğan ve havucu zeytinyağında kavurun; salça, mercimek ve 4 katı suyu ekleyin.','20 dk (Instant Pot 8 dk) pişirip blenderdan geçirin; kimyon, nane, limon ekleyin.','Tavuğu baharatlayıp yağsız ızgara tavada / air fryer’da pişirin (çorba 2 günlük, tavuk günlük de yapılabilir).','Çorba, tavuk, salata ve ekmekle servis edin.']},
+{id:'d10',pt:'et',name:'Etli türlü + bulgur pilavı',ing:[['kusbasi',200,160],['patlican',120,120],['kabak',120,120],['tfasulye',80,80],['biber',60,60],['passata',150,150],['sogan',50,50],['patates',100,80],['zyag',8,8],['bulgur',35,30,1],['yogurt',150,150,1]],
+ spice:['karabiber','kekik'],steps:['Eti zeytinyağında mühürleyin, soğanı ekleyin.','İri doğranmış tüm sebzeleri, passatayı ve 1 su bardağı suyu ekleyin.','Kısık ateşte 45 dk ya da 180°C fırında güveçte 1 saat pişirin (düdüklü 15 dk).','Yağsız bulgur ve yoğurtla servis edin.']},
+{id:'d11',pt:'bakliyat',name:'Barbunya pilaki + fırın tavuk + bulgur',ing:[['barbunya',180,140],['havuc',60,60],['sogan',50,50],['passata',100,100],['zyag',8,8],['tavuk',180,150],['bulgur',30,25,1],['yogurt',100,100,1],['domates',100,100,1],['salatalik',100,100,1],['marul',40,40,1]],
+ spice:['pul biber','maydanoz','tatlı toz biber'],steps:['Soğan ve küp havucu zeytinyağında kavurun; passata, süzülmüş barbunya ve ½ su bardağı suyu ekleyip 15 dk pişirin, limon sıkın.','Tavuğu baharatlayıp 200°C fırında 18–20 dk pişirin.','Bulguru yağsız demleyin.','Yağsız limonlu söğüş salata ve yoğurtla servis edin.']},
+{id:'d12',pt:'tavuk',name:'Tavuklu bezelye yemeği + pirinç pilavı',ing:[['tavuk',200,160],['bezelye',200,160],['havuc',60,60],['sogan',50,50],['passata',80,80],['zyag',8,8],['pirinc',40,30,1],['yogurt',150,150,1],...SOG],
+ spice:['dereotu','karabiber'],steps:['Soğanı zeytinyağında kavurun, kuşbaşı tavuğu ekleyip rengini döndürün.','Havuç, bezelye, passata ve 1 su bardağı suyu ekleyip 20 dk pişirin; dereotu serpin.','Pirinci yağsız demleyin.','Yoğurt ve söğüşle servis edin.']}
+,
+{id:'d13',pt:'tavuk',name:'Fırında sebzeli tavuk köfte + bulgur pilavı',ing:[['hkiyma',220,170],['kabak',100,100],['havuc',50,50],['sogan',40,40],['biber',100,100],['domates',150,150],['zyag',6,6],['bulgur',45,35,1],['yogurt',150,150,1],...SAL(5,5)],
+ spice:['kimyon','kekik','karabiber'],steps:['Kabak ve havucu rendeleyip suyunu sıkın; kıyma, rendelenmiş soğan ve baharatla yoğurun.','Köfteleri fırın kâğıdına dizin; yanına biber ve domatesi koyup zeytinyağını gezdirin.','200°C fırında 22–25 dk (air fryer 190°C 12–14 dk) pişirin.','Yağsız bulgur, yoğurt ve salatayla servis edin.']},
+{id:'d14',pt:'bakliyat',name:'Etli nohut + bulgur pilavı',ing:[['kusbasi',150,120],['nohut',120,100],['sogan',50,50],['salca',15,15],['passata',100,100],['zyag',5,5],['bulgur',35,25,1],['yogurt',100,100,1],['tursu',30,30,1],...SAL(5,5)],
+ spice:['kimyon','pul biber','karabiber'],steps:['Eti zeytinyağında mühürleyin; soğan ve salçayla kavurun.','Passata ve 1,5 su bardağı suyla et yumuşayana kadar pişirin (düdüklü 20 dk).','Süzülmüş nohudu ekleyip 10 dk daha kaynatın.','Yağsız bulgur, turşu, yoğurt ve salatayla servis edin.']},
+{id:'d15',pt:'kiyma',name:'Kıymalı ıspanak + pirinç pilavı',ing:[['kiyma',180,150],['ispanak',300,300],['sogan',50,50],['salca',10,10],['zyag',5,5],['pirinc',45,35,1],['yogurt',200,150,1],...SOG],
+ spice:['pul biber','karabiber'],steps:['Kıymayı kendi yağında kavurun; soğan, zeytinyağı ve salçayı ekleyin.','Yıkanmış ıspanağı ekleyip kapağı kapalı 8–10 dk pişirin.','Pirinci yağsız demleyin.','Sarımsaklı yoğurt ve söğüşle servis edin.']},
+{id:'d16',pt:'kiyma',name:'Biber dolması kasesi (dolma içi tencere)',ing:[['kiyma',180,150],['biber',200,200],['domates',100,100],['sogan',50,50],['passata',100,100],['pirinc',45,35],['zyag',5,5],['yogurt',150,150,1],...SOG],
+ spice:['nane','karabiber','pul biber','maydanoz'],steps:['Kıymayı soğanla kavurun; iri doğranmış biber ve domatesi ekleyin.','Yıkanmış pirinç, passata, nane ve 1,5 su bardağı sıcak suyu ekleyin.','Kısık ateşte pirinç suyunu çekene kadar 15–18 dk pişirin, 5 dk demlendirin.','Yoğurt ve söğüşle servis edin. Pirinç yemeğin içinde: tabağa paylaştırırken Samet’e daha büyük porsiyon verin.']},
+{id:'d17',pt:'tavuk',name:'Fırında karnabaharlı tavuk + bulgur pilavı',ing:[['tavuk',220,170],['karnabahar',300,300],['havuc',60,60],['sogan',40,40],['zyag',8,8],['salca',10,10],['bulgur',45,35,1],['yogurt',150,150,1],...SOG],
+ spice:['zerdeçal','tatlı toz biber','kimyon'],steps:['Tavuk ve çiçeklerine ayrılmış karnabaharı salça, zeytinyağı, zerdeçal ve toz biberle harmanlayın.','Havuç ve soğanla tepsiye yayın; 200°C fırında 25–30 dk pişirin.','Bulguru yağsız demleyin.','Sarımsaklı yoğurdu üzerine gezdirip söğüşle servis edin.']},
+{id:'d18',pt:'bakliyat',name:'Kıymalı yeşil mercimek + pirinç pilavı',ing:[['kiyma',120,100],['ymercimek',200,160],['sogan',50,50],['havuc',50,50],['salca',15,15],['zyag',5,5],['pirinc',35,30,1],['yogurt',150,150,1],...SAL(5,5)],
+ spice:['kimyon','pul biber','nane'],steps:['Kıymayı kavurun; soğan, havuç, zeytinyağı ve salçayı ekleyin.','Süzülmüş mercimek ve 1 su bardağı suyu ekleyip 12–15 dk pişirin.','Pirinci yağsız demleyin.','Yoğurt ve salatayla servis edin.']},
+{id:'d19',pt:'tavuk',name:'Tavuklu pırasa yemeği + pirinç pilavı',ing:[['tavuk',220,170],['pirasa',250,250],['havuc',80,80],['sogan',40,40],['zyag',8,8],['pirinc',45,35,1],['yogurt',150,150,1],...SOG],
+ spice:['karabiber','limon'],steps:['Soğanı zeytinyağında kavurun, kuşbaşı tavuğu ekleyip rengini döndürün.','Halka doğranmış pırasa ve havucu, 1 su bardağı suyu ekleyip 20 dk pişirin; limon sıkın.','Pirinci yağsız demleyin.','Yoğurt ve söğüşle servis edin.']},
+{id:'d20',pt:'et',name:'Kapuska (etli lahana) + bulgur pilavı',ing:[['kusbasi',180,140],['lahana',300,300],['sogan',50,50],['salca',15,15],['passata',80,80],['zyag',8,8],['bulgur',45,35,1],['yogurt',150,150,1],...SOG],
+ spice:['pul biber','karabiber'],steps:['Eti zeytinyağında mühürleyin; soğan ve salçayla kavurun.','İri doğranmış lahana, passata ve 1 su bardağı suyu ekleyin.','Kısık ateşte 40 dk (düdüklü 15 dk) pişirin; pul biber ekleyin.','Yağsız bulgur, yoğurt ve söğüşle servis edin.']},
+{id:'d21',pt:'kiyma',name:'Kıymalı domatesli makarna + cacık',ing:[['kiyma',170,140],['makarna',60,45],['passata',150,150],['sogan',40,40],['biber',80,80],['zyag',5,5],['yogurt',150,150,1],['salatalik',100,100,1],['domates',100,100,1]],
+ spice:['kekik','nane','pul biber'],steps:['Kıymayı soğan ve biberle kavurun; passata ve kekiği ekleyip 10 dk pişirin (sos 2 günlük).','Makarnayı tuzlu suda haşlayın; porsiyonları çiğ gramajına göre ayrı tartın.','Sosu makarnayla karıştırın.','Cacık (yoğurt + salatalık + nane) ve domatesle servis edin.']}
+];
+/* ===== PAZAR: TEK GÜNLÜK IZGARA / BALIK ===== */
+const Z=[
+{id:'z1',pt:'balik',name:'Fırında somon + fırın sebze',ing:[['somon',200,150],['kabak',150,150],['biber',100,100],['patates',150,120],['yogurt',100,100],...SAL(5,5)],
+ spice:['kekik','karabiber','limon'],steps:['Somonu limon, tuz, karabiberle baharatlayın (ek yağ yok).','Sebze ve patatesi fırın kâğıdına dizin; 200°C’de 15 dk pişirin.','Somonu ekleyip 12–14 dk daha pişirin.','Salata ve yoğurtla servis edin.']},
+{id:'z2',pt:'balik',name:'Izgara levrek / çipura + çoban salata',ing:[['levrek',280,220],['patates',200,160],['sogan',40,40],['zyag',5,5],...SAL(5,5)],
+ spice:['kekik','limon','karabiber'],steps:['Balığı ölçülü zeytinyağı, limon ve kekikle ovun; ızgara tavada her yüzünü 3–4 dk pişirin.','Patatesi haşlayın ya da air fryer’da 200°C 18 dk pişirin.','Bol limonlu çoban salata ve kırmızı soğanla servis edin.']},
+{id:'z3',pt:'kiyma',name:'Izgara köfte + piyaz + közlenmiş biber',ing:[['kiyma',200,160],['kfasulye',100,80],['biber',150,150],['domates',100,100],['sogan',30,30],['zyag',8,8],['ekmek',40,30],['yogurt',150,150]],
+ spice:['kimyon','sumak','maydanoz'],steps:['Kıymayı kimyon, karabiber, tuz ve rendelenmiş soğanla yoğurup yağsız ızgara tavada pişirin.','Fasulye, soğan, maydanoz, sumak, limon ve zeytinyağıyla piyaz yapın.','Biber ve domatesi ızgarada közleyin.','Ekmek ve ayranla (yoğurt + su) servis edin.']},
+{id:'z4',pt:'tavuk',name:'Tavuk şiş + bulgur pilavı + cacık',ing:[['tavuk',230,180],['biber',100,100],['sogan',50,50],['domates',100,100],['zyag',8,6],['bulgur',55,40],['yogurt',150,150],['salatalik',100,100]],
+ spice:['tatlı toz biber','kekik','nane'],steps:['Tavuğu yoğurttan 1 YK, zeytinyağı, toz biber ve kekikle en az 1 saat marine edin.','Biber, soğan ve domatesle şişe dizip air fryer’da 190°C 14–16 dk (ya da fırın ızgarasında) pişirin.','Bulguru yağsız demleyin; yoğurt, salatalık ve naneyle cacık yapın.']}
+,
+{id:'z5',pt:'balik',name:'Fırında morina buğulama + patates',ing:[['morina',300,240],['domates',150,150],['biber',100,100],['sogan',50,50],['patates',250,200],['zyag',10,10],...SAL(5,5)],
+ spice:['defne yaprağı','karabiber','limon'],steps:['Halka patatesi 10 dk haşlayıp fırın kabına dizin.','Üzerine balık, soğan, biber, domates ve defne yaprağını yerleştirin; zeytinyağı ve limon gezdirin.','Folyoyla kapatıp 200°C’de 20 dk, açıp 5 dk daha pişirin.','Salatayla servis edin.']},
+{id:'z6',pt:'tavuk',name:'Izgara tavuk but + közlenmiş sebze + bulgur',ing:[['but',250,200],['patlican',150,150],['biber',100,100],['domates',100,100],['zyag',5,5],['bulgur',50,40],['yogurt',150,150]],
+ spice:['kekik','tatlı toz biber','sumak'],steps:['Butları baharat ve yoğurttan 1 YK ile marine edin; ızgara tavada her yüzünü 6–7 dk pişirin.','Patlıcan, biber ve domatesi ızgarada / fırında közleyin; zeytinyağı ve sumakla tatlandırın.','Yağsız bulgur ve yoğurtla servis edin.']},
+{id:'z7',pt:'balik',name:'Fırında somon + brokoli + bulgur',ing:[['somon',180,140],['brokoli',200,200],['bulgur',45,35],['yogurt',100,100],...SAL(5,5)],
+ spice:['karabiber','limon','sarımsak tozu'],steps:['Somon ve brokoliyi fırın kâğıdına dizin; limon, tuz, sarımsak tozu serpin (ek yağ yok).','200°C fırında 14–16 dk pişirin.','Yağsız bulgur, yoğurt ve salatayla servis edin.']}
+];
+const ALL={};[B,S,D,Z].forEach(a=>a.forEach(x=>ALL[x.id]=x));
+/* Claude'un yazdığı tarifleri doğrular: yalnızca veritabanındaki besinler, makul gramaj ve kalori. */
+const LIM={b:[460,760,24,330,580,18,3],s:[300,540,20,220,420,16,2],d:[520,900,40,400,750,32,4]};
+function validRecipe(r,kind){
+  const L=LIM[kind==='b'||kind==='s'?kind:'d'];
+  try{
+    if(!r||typeof r.name!=='string'||r.name.length<4||r.name.length>90)return null;
+    if(!Array.isArray(r.ing)||r.ing.length<L[6]||r.ing.length>14)return null;
+    const ing=[];for(const i of r.ing){const k=i[0],a=+i[1],b=+i[2];if(!F[k]||!(a>0&&a<=600)||!(b>0&&b<=600))return null;
+      const u=F[k].u;if((u==='adet'||u==='ölçek')&&a>10)return null;ing.push([k,a,b,i[3]?1:0])}
+    const m=mac(ing,1),m2=mac(ing,2);if(m[0]<L[0]||m[0]>L[1]||m[1]<L[2]||m2[0]<L[3]||m2[0]>L[4]||m2[1]<L[5])return null;
+    const steps=(r.steps||[]).filter(x=>typeof x==='string'&&x.length>5).slice(0,6).map(x=>x.slice(0,300));if(steps.length<1)return null;
+    const spice=(r.spice||[]).filter(x=>typeof x==='string').slice(0,6).map(x=>x.slice(0,30));
+    const pt=['tavuk','kiyma','et','bakliyat','balik'].includes(r.pt)?r.pt:'et';
+    return {name:r.name,pt,two:!!r.two_day,kind:kind==='b'||kind==='s'?kind:(r.two_day?'d':'z'),ing,steps,spice,custom:1};
+  }catch(e){return null}
+}
+function addCustom(r){if(ALL[r.id])return;ALL[r.id]=r;({b:B,s:S,d:D,z:Z})[r.kind].push(r)}
+
+/* ===== HESAP ===== */
+function mac(ing,pi){const t=[0,0,0,0,0];ing.forEach(i=>{const f=F[i[0]],q=(f.u==='adet'||f.u==='ölçek')?i[pi]:i[pi]/100;f.m.forEach((v,k)=>t[k]+=v*q)});return t}
+function rnd(key,v){const u=F[key].u;if(u==='ölçek')return Math.max(0.5,Math.round(v*2)/2);if(u==='adet')return Math.max(1,Math.round(v));return Math.max(5,Math.round(v/5)*5)}
+/* Porsiyonları hedef aralığa oturtur: önce protein kaynakları, sonra karbonhidrat (ekmek/pilav/yulaf/patates) ölçeklenir. */
+function balance(p){
+  const meals=['b','s','d'].map(k=>ALL[p[k]].ing.map(i=>i.slice()));
+  const all=meals.flat();
+  [['s',1],['r',2]].forEach(([who,pi])=>{
+    const t=T[who],mid=(t.lo+t.hi)/2;
+    for(let it=0;it<6;it++){
+      let m=mac(all,pi);
+      if(m[1]<t.pmin){
+        const pr=all.filter(i=>F[i[0]].prot&&i[pi]>0),pp=mac(pr,pi)[1];
+        const f=Math.min(1.3,(t.pmin+2-(m[1]-pp))/pp);
+        pr.forEach(i=>i[pi]=rnd(i[0],i[pi]*f));m=mac(all,pi);
+      }
+      if(m[0]>=t.lo+10&&m[0]<=t.hi-10)break;
+      const fx=all.filter(i=>F[i[0]].flex&&i[pi]>0),fk=mac(fx,pi)[0];
+      const f=Math.min(1.8,Math.max(0.5,(mid-(m[0]-fk))/fk));
+      fx.forEach(i=>i[pi]=rnd(i[0],i[pi]*f));
+    }
+  });
+  all.forEach(i=>{if(F[i[0]].flex&&i[2]>i[1])i[1]=i[2]}); // Raşe'nin porsiyonu Samet'inkini geçmesin
+  return {b:meals[0],s:meals[1],d:meals[2]};
+}
+function build(w){ // w={no,plans:[{b,s,d}]}
+  return w.plans.map((p,i)=>{const ing=balance(p);return{...p,days:SLOTS[i],ing,
+    tot:{s:mac([...ing.b,...ing.s,...ing.d],1),r:mac([...ing.b,...ing.s,...ing.d],2)}}});
+}
+/* ===== HAFTA ÜRETİCİ: en uzun süredir kullanılmayanı seçer, geçen haftanın akşamlarını tekrar etmez ===== */
+function ago(hist,id){for(let i=hist.length-1;i>=0;i--)if(hist[i].plans.some(p=>p.b===id||p.s===id||p.d===id))return hist.length-i;return 99}
+function pick(pool,n,hist,diverse){
+  const sc=pool.map(x=>({x,a:ago(hist,x.id)})).map(o=>({...o,s:Math.min(o.a,6)+Math.random()*1.5-(o.a===1?50:0)})).sort((a,b)=>b.s-a.s);
+  const out=[],types={};
+  if(diverse)sc.forEach(o=>{if(out.length<n&&!types[o.x.pt]){types[o.x.pt]=1;out.push(o.x)}});
+  sc.forEach(o=>{if(out.length<n&&!out.includes(o.x))out.push(o.x)});
+  return out;
+}
+function generate(hist,forced){
+  const no=hist.length?hist[hist.length-1].no+1:5;
+  const b=pick(B,4,hist),s=pick(S,4,hist),d0=pick(D,3,hist,true),z0=pick(Z,1,hist)[0];
+  const fd=forced?forced.filter(x=>x.two):[],fz=forced?forced.filter(x=>!x.two):[];
+  const d=[...fd,...d0.filter(x=>!fd.includes(x))].slice(0,3),z=fz[0]||z0;
+  // aynı güne iki skyr kasesi ya da tost+wasa gelmesin diye basit eşleştirme
+  const clash=(x,y)=>(x.id==='b4'&&['s2','s4','s8'].includes(y.id))||((x.id==='b2'||x.id==='b10')&&y.id==='s6')||(x.id==='b9'&&y.id==='s9');
+  for(let n=0;n<3;n++)for(let i=0;i<4;i++)if(clash(b[i],s[i])){const j=(i+1)%4;[s[i],s[j]]=[s[j],s[i]]}
+  const dd=[...d,z];
+  return {no,plans:b.map((x,i)=>({b:x.id,s:s[i].id,d:dd[i].id}))};
+}
+/* ===== ALIŞVERİŞ: (Samet + Raşe) × gün sayısı, besin bazında birleştirilir ===== */
+const nf=v=>Number(v).toLocaleString('tr-TR',{maximumFractionDigits:1});
+function gkg(v){return v>=1000?nf(Math.round(v/10)/100)+' kg':nf(v)+' g'}
+function shopping(plans){
+  const tot={},sp=new Set();
+  plans.forEach(p=>{['b','s','d'].forEach(k=>{p.ing[k].forEach(i=>{tot[i[0]]=(tot[i[0]]||0)+(i[1]+i[2])*p.days.length});(ALL[p[k]].spice||[]).forEach(x=>sp.add(x))})});
+  const out={};SECS.forEach(s=>out[s[0]]=[]);
+  Object.keys(tot).sort((a,b)=>F[a].n.localeCompare(F[b].n,'tr')).forEach(k=>{
+    const f=F[k],q=tot[k];let buy,need='';
+    if(f.u==='ölçek'){buy=nf(q)+' ölçek';need='~'+nf(q*30)+' g'}
+    else if(k==='yumurta'){buy=Math.ceil(q)+' adet'}
+    else if(k==='zeytin'){buy='1 kavanoz';need=nf(q)+' adet'}
+    else if(k==='wasa'){buy='1 paket';need=nf(q)+' adet'}
+    else if(f.u==='adet'){buy=nf(q)+' adet'}
+    else if(f.pantry){buy='evde yoksa 1 şişe / kavanoz';need=nf(q)+' g'}
+    else if(f.can){buy=Math.ceil(q/f.can-0.05)+' '+f.canL;need=nf(q)+' g süzülmüş'}
+    else if(f.slice){buy=Math.ceil(q/750)+' paket / somun';need=nf(q)+' g ≈ '+Math.ceil(q/f.slice)+' dilim'}
+    else if(f.piece){buy=Math.ceil(q/f.piece-0.1)+' adet';need=gkg(q)}
+    else{const u=f.u==='ml'?'ml':'g',st=q>1000?100:50,b=Math.ceil(q/st)*st;
+      buy=u==='ml'?(b>=1000?nf(b/1000)+' L':b+' ml'):gkg(b);need=u==='ml'?nf(q)+' ml':gkg(q)}
+    out[f.sec].push({n:f.n,buy,need});
+  });
+  out.sebze.push({n:'Limon',buy:'3 adet'},{n:'Maydanoz / dereotu',buy:'1’er demet'},{n:'Sarımsak',buy:'1 baş'});
+  if(sp.size)out.sos.push({n:'Baharat (evde yoksa): '+[...sp].sort((a,b)=>a.localeCompare(b,'tr')).join(', '),buy:'küçük paket'});
+  return out;
+}
+function shopText(w,plans){
+  const sh=shopping(plans);let t='HAFTA '+w.no+' – MARKET LİSTESİ (Samet + Raşe, 7 gün)\n';
+  SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';sh[k].forEach(x=>t+='☐ '+x.n+' — '+x.buy+(x.need?' (gerekli: '+x.need+')':'')+'\n')});
+  return t;
+}
+if(typeof module!=='undefined')module.exports={validRecipe,B,S,D,Z,generate,build,shopping,shopText,T,balance,mac};
+
+/* ===== ARAYÜZ ===== */
+if(typeof document!=='undefined'){
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+let hist=[],cur=0,shopOpen=false,custom=[];
+try{const c=JSON.parse(localStorage.getItem('beslenme-custom')||'[]');if(Array.isArray(c))c.forEach(r=>{const v=validRecipe({...r,two_day:r.two},r.kind);if(v&&typeof r.id==='string'){v.id=r.id;custom.push(v);addCustom(v)}})}catch(e){}
+try{const h=JSON.parse(localStorage.getItem('beslenme-hist')||'[]');if(Array.isArray(h)&&h.every(w=>w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d])))hist=h}catch(e){}
+function save(){try{localStorage.setItem('beslenme-hist',JSON.stringify(hist));localStorage.setItem('beslenme-custom',JSON.stringify(custom))}catch(e){}}
+function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,3200)}
+const amt=(k,v)=>{if(!v)return '—';const u=F[k].u||'g';return nf(v)+' '+u};
+const r0=v=>Math.round(v);
+function mealHTML(label,rec,ing,days,isDinner,pi,k){
+  const ms=mac(ing,1),mr=mac(ing,2);
+  let h='<div class="meal"><div><div class="eyebrow">'+label+'</div><h3>'+esc(rec.name)+(isDinner&&days>1?'<span class="badge">2 GÜNLÜK</span>':'')+'</h3></div>';
+  h+='<div class="tscroll"><table><thead><tr><th>Malzeme</th><th class="n cs">Samet</th><th class="n cr">Raşe</th></tr></thead><tbody>';
+  ing.forEach(i=>h+='<tr><td>'+esc(F[i[0]].n)+'</td><td class="n">'+amt(i[0],i[1])+'</td><td class="n">'+amt(i[0],i[2])+'</td></tr>');
+  h+='<tr class="sum"><td>Öğün toplamı</td><td class="n">'+r0(ms[0])+' kcal · '+r0(ms[1])+' g P</td><td class="n">'+r0(mr[0])+' kcal · '+r0(mr[1])+' g P</td></tr></tbody></table></div>';
+  h+='<div class="prep"><b>Hazırlanışı</b><ol>'+rec.steps.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>';
+  if(isDinner&&days>1){const bt=ing.filter(i=>!i[3]).map(i=>esc(F[i[0]].n.replace(/ \(.*\)/,''))+' '+amt(i[0],(i[1]+i[2])*days));
+    h+='<div class="batch"><b>Tencereye girecek toplam (2 kişi × 2 gün):</b> '+bt.join(' · ')+'. Pilav, yoğurt ve salata günlük hazırlanır; yemek buzdolabında kapalı kapta 2 gün saklanır. Tabağa koyarken eti/proteini tartarak paylaştırın.</div>'}
+  h+='</div>';
+  return h+'</div>';
+}
+function render(){
+  const w=hist[cur],plans=build(w);
+  $('weeks').innerHTML='<span>Geçmiş haftalar:</span>'+hist.map((x,i)=>'<button class="small" data-w="'+i+'" aria-pressed="'+(i===cur)+'">Hafta '+x.no+'</button>').join('')+'<button class="small" id="reset">Geçmişi sıfırla</button>';
+  $('targets').innerHTML='<div class="target"><b>Samet</b><div>'+T.s.lo+'–'+T.s.hi+' kcal · en az '+T.s.pmin+' g protein (ilk 4 haftanın porsiyonlarından çıkarıldı)</div></div><div class="target r"><b>Raşe</b><div>'+T.r.lo+'–'+T.r.hi+' kcal · 95–110 g protein hedefi</div></div>';
+  let h='<h2>HAFTA '+w.no+'</h2>';
+  plans.forEach((p,i)=>{const n=p.days.length;
+    h+='<article class="plan"><div class="plan-head"><span class="no">BESLENME – '+(i+1)+' –</span><span class="freq">Haftada '+n+' gün</span><span class="days">'+p.days.map(d=>DAYS[d]).join(' – ')+'</span></div>';
+    h+=mealHTML('Kahvaltı',ALL[p.b],p.ing.b,n,false,i,'b')+mealHTML('Ara öğün',ALL[p.s],p.ing.s,n,false,i,'s')+mealHTML('Akşam yemeği',ALL[p.d],p.ing.d,n,true,i,'d')+'</article>'});
+  $('menu').innerHTML=h;
+  // günlük tablo
+  const rows={s:[],r:[]};plans.forEach(p=>p.days.forEach(d=>{rows.s[d]=p.tot.s;rows.r[d]=p.tot.r}));
+  let warn=0,nh='<h2>Günlük besin değerleri</h2>';
+  ['s','r'].forEach(k=>{const t=T[k],av=[0,0,0,0,0];
+    nh+='<div><h3 class="'+(k==='s'?'cs':'cr')+'">'+t.name.toUpperCase()+'</h3><div class="tscroll"><table><thead><tr><th>Gün</th><th class="n">Kalori</th><th class="n">Protein</th><th class="n">Karb.</th><th class="n">Yağ</th><th class="n">Lif</th></tr></thead><tbody>';
+    rows[k].forEach((m,d)=>{m.forEach((v,j)=>av[j]+=v/7);const wk=m[0]<t.lo-25||m[0]>t.hi+25,wp=m[1]<t.pmin-3;if(wk||wp)warn++;
+      nh+='<tr><td>'+DAYS[d]+'</td><td class="n'+(wk?' warn':'')+'">'+r0(m[0])+' kcal</td><td class="n'+(wp?' warn':'')+'">'+r0(m[1])+' g</td><td class="n">'+r0(m[2])+' g</td><td class="n">'+r0(m[3])+' g</td><td class="n">'+r0(m[4])+' g</td></tr>'});
+    nh+='<tr class="avg"><td>Haftalık ortalama</td><td class="n">'+r0(av[0])+' kcal</td><td class="n">'+r0(av[1])+' g</td><td class="n">'+r0(av[2])+' g</td><td class="n">'+r0(av[3])+' g</td><td class="n">'+r0(av[4])+' g</td></tr></tbody></table></div></div>'});
+  const prev=hist[cur-1],rep=prev?w.plans.filter(p=>prev.plans.some(q=>q.d===p.d)).length:0;
+  const qc=[['7 gün',plans.reduce((a,p)=>a+p.days.length,0)===7],['4 akşam pişirmesi',true],['Aynı yemek, farklı porsiyon',true],['Kalori ve protein hedefte',warn===0],['Geçen haftanın akşamı tekrar etmiyor',rep===0]];
+  nh+='<div class="qc">'+qc.map(q=>'<span class="'+(q[1]?'':'bad')+'">'+(q[1]?'✓ ':'! ')+q[0]+'</span>').join('')+'</div><p class="note">Değerler, yazılı gramajlardan yaklaşık besin değerleriyle hesaplanır (karbonhidrat net, lif ayrı). Renkli hücre hedef dışı günü gösterir. Et, tahıl ve bakliyat gramajları aksi yazmadıkça çiğ/kuru ağırlıktır; konserve bakliyat süzülmüş (pişmiş) ağırlıktır.</p>';
+  $('nutri').innerHTML=nh;
+  $('flex').innerHTML='<h2>Kontrollü esnek öğün</h2><p class="note">Haftada en fazla 1 akşam yemeği, tercihen Pazar akşamının yerine. O gün kahvaltı ve ara öğün aynen uygulanır. Hedef: Samet için yaklaşık 700–800 kcal, Raşe için 550–650 kcal.</p><ul class="note"><li>İnce hamur pizza: Samet 3 dilim, Raşe 2 dilim + büyük yeşil salata</li><li>Suşi (tempurasız): Samet 10–12 parça, Raşe 8 parça + edamame</li><li>Ekmeğin yarısıyla burger + patates yerine salata</li><li>Türk restoranı: tavuk şiş / ızgara köfte + salata; pilavdan 3–4 YK, lavaş yok</li></ul><p class="note">Takviyeler ve su: D vitamini ve omega-3 kahvaltıyla, magnezyum yatmadan önce; günde 2,5–3 L su.</p>';
+  renderShop(w,plans);
+}
+function renderShop(w,plans){
+  const el=$('shop');el.hidden=!shopOpen;if(!shopOpen)return;
+  const sh=shopping(plans);let h='<h2>Hafta '+w.no+' – Market alışveriş listesi</h2><p class="note">Samet + Raşe toplamı, 7 gün. Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır.</p>';
+  let n=0;SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+sh[k].map(x=>'<li><label><input type="checkbox" id="ck'+(n++)+'"><span>'+esc(x.n)+' — <b>'+x.buy+'</b>'+(x.need?' <small>(gerekli: '+x.need+')</small>':'')+'</span></label></li>').join('')+'</ul>'});
+  h+='<div><button id="copy">Listeyi kopyala (Apple Notes)</button></div><textarea id="shoptxt" readonly aria-label="Kopyalanabilir alışveriş listesi"></textarea>';
+  el.innerHTML=h;$('shoptxt').value=shopText(w,plans);
+}
+$('btnNew').onclick=()=>{hist.push(generate(hist));if(hist.length>26)hist.shift();cur=hist.length-1;save();render();toast('Hafta '+hist[cur].no+' hazır');window.scrollTo({top:0})};
+$('btnShop').onclick=()=>{shopOpen=true;render();$('shop').scrollIntoView({behavior:'smooth',block:'start'})};
+document.addEventListener('click',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.w!==undefined){cur=+t.dataset.w;render()}
+  else if(t.id==='reset'){if(t.dataset.sure){hist=[generate([])];cur=0;save();render();toast('Geçmiş silindi, Hafta 5 yeniden hazırlandı')}else{t.dataset.sure=1;t.textContent='Emin misin? Tekrar tıkla'}}
+  else if(t.id==='copy'){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')})}
+});
+$('btnPdf').onclick=()=>{shopOpen=true;render();setTimeout(()=>window.print(),50)};
+if(!hist.length){hist.push(generate([]));save()}
+cur=hist.length-1;render();
+}
+</script>
+</body>
+</html>
