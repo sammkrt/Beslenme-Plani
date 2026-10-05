@@ -9,6 +9,10 @@ const MAX_BODY = 100_000;
 const ID = /^[a-z0-9_-]{1,24}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const GRAIN = /^[a-z]{1,16}$/;
+/* plan.x: kullanıcının öğünden çıkardığı malzeme satırları, ör. {b: [3], d: [0, 7]} */
+const validX = x => x && typeof x === 'object' && !Array.isArray(x) &&
+  Object.entries(x).every(([k, a]) => ['b', 's', 'd'].includes(k) && Array.isArray(a) && a.length <= 30 &&
+    a.every(n => Number.isInteger(n) && n >= 0 && n < 30));
 const KEEP_BACKUPS = 200;
 
 function cors(req, env) {
@@ -52,7 +56,7 @@ function validState(s) {
   const histOk = s.hist.every(w => w && Number.isInteger(w.no) && w.no > 0 && w.no < 100000 &&
     (w.start === undefined || DATE.test(w.start)) &&
     Array.isArray(w.plans) && w.plans.length === 4 &&
-    w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d) && (p.g === undefined || GRAIN.test(p.g))));
+    w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d) && (p.g === undefined || GRAIN.test(p.g)) && (p.x === undefined || validX(p.x))));
   const customOk = s.custom.every(r => r && typeof r === 'object' && ID.test(r.id));
   const pr = s.prefs;
   const prefsOk = pr && typeof pr === 'object' && !Array.isArray(pr) && Object.keys(pr).length <= 300 &&
