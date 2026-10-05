@@ -13,6 +13,15 @@ Geçmiş haftalar `server/` klasöründeki Cloudflare Worker üzerinden ücretsi
 - Okuma herkese açıktır; yazmak için ortak PIN gerekir. Her cihazda bir kez **PIN gir** düğmesiyle girilir.
 - PIN depoda değil, yalnızca Cloudflare'de gizli değişken (`PIN`) olarak durur.
 - İki cihaz aynı anda değişiklik yaparsa sunucudaki sürüm geçerli olur (sürüm kontrolü ile).
+- Haftalar takvime bağlıdır (her hafta bir pazartesi başlar, `start` alanı). Geçmiş haftalar salt okunurdur; yalnızca bu hafta ve gelecek hafta yeniden oluşturulabilir ya da silinebilir.
+- Her kayıttan önce bir önceki durum `state_backup` tablosuna kopyalanır (son 200 sürüm). Geri yüklemek için:
+
+```bash
+cd server
+npx wrangler d1 execute beslenme --remote --command "SELECT hid, v, saved FROM state_backup ORDER BY hid DESC LIMIT 20"
+# istenen hid için (ör. 42); sonra uygulamayı yenileyin:
+npx wrangler d1 execute beslenme --remote --command "UPDATE state SET data = (SELECT data FROM state_backup WHERE hid = 42), v = v + 1 WHERE id = 1"
+```
 
 ### Kurulum / yeniden yayın
 

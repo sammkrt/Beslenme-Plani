@@ -6,6 +6,8 @@
 
 const MAX_BODY = 100_000;
 const ID = /^[a-z0-9_-]{1,24}$/i;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const KEEP_BACKUPS = 200;
 
 function cors(req, env) {
   const origin = req.headers.get('Origin') || '';
@@ -46,6 +48,7 @@ function validState(s) {
   if (!s || !Array.isArray(s.hist) || !Array.isArray(s.custom)) return false;
   if (s.hist.length > 30 || s.custom.length > 60) return false;
   const histOk = s.hist.every(w => w && Number.isInteger(w.no) && w.no > 0 && w.no < 100000 &&
+    (w.start === undefined || DATE.test(w.start)) &&
     Array.isArray(w.plans) && w.plans.length === 4 &&
     w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d)));
   const customOk = s.custom.every(r => r && typeof r === 'object' && ID.test(r.id));
@@ -80,10 +83,19 @@ export default {
       if (!Number.isInteger(body.base) || body.base < 0 || !validState(state)) return json({ error: 'invalid' }, 400, req, env);
 
       const data = JSON.stringify(state), now = new Date().toISOString();
-      /* Koşullu yazma: yalnızca istemcinin gördüğü sürüm hâlâ güncelse kaydeder. */
-      const res = body.base === 0
-        ? await env.DB.prepare('INSERT INTO state (id, v, data, updated) VALUES (1, 1, ?, ?) ON CONFLICT(id) DO NOTHING').bind(data, now).run()
-        : await env.DB.prepare('UPDATE state SET v = v + 1, data = ?, updated = ? WHERE id = 1 AND v = ?').bind(data, now, body.base).run();
+      /* Koşullu yazma: yalnızca istemcinin gördüğü sürüm hâlâ güncelse kaydeder.
+         Aynı işlemde önceki durum state_backup'a kopyalanır (yanlış silmeye karşı; son KEEP_BACKUPS kayıt tutulur). */
+      let res;
+      if (body.base === 0) {
+        res = await env.DB.prepare('INSERT INTO state (id, v, data, updated) VALUES (1, 1, ?, ?) ON CONFLICT(id) DO NOTHING').bind(data, now).run();
+      } else {
+        const out = await env.DB.batch([
+          env.DB.prepare('INSERT INTO state_backup (v, data, updated, saved) SELECT v, data, updated, ? FROM state WHERE id = 1 AND v = ?').bind(now, body.base),
+          env.DB.prepare('UPDATE state SET v = v + 1, data = ?, updated = ? WHERE id = 1 AND v = ?').bind(data, now, body.base),
+          env.DB.prepare('DELETE FROM state_backup WHERE hid <= (SELECT MAX(hid) FROM state_backup) - ?').bind(KEEP_BACKUPS),
+        ]);
+        res = out[1];
+      }
       if (!res.meta.changes) return json({ error: 'conflict', ...(await readState(env)) }, 409, req, env);
       return json({ v: body.base + 1, updated: now }, 200, req, env);
     }
