@@ -6,6 +6,9 @@ Tek dosyalık statik uygulama (`index.html`), GitHub Pages'te yayında: https://
 
 Tarif eklemek için `index.html` içindeki `B` (kahvaltı), `S` (ara öğün), `D` (2 günlük akşam) ve `Z` (Pazar) dizilerine yeni kayıt ekleyin; malzemeler `F` besin tablosundaki anahtarları kullanır.
 
+- **Tahıl rotasyonu:** Pilavı ayrı servis edilen (`servis=1`) akşamlarda bulgur, basmati ve karabuğday haftalık döner (`GR`, plan alanı `g`); tarif adı, malzeme ve pişirme adımı buna göre değişir.
+- **Tercihler:** Her tarifin altındaki 👍 / 👎 ikinizin ortak tercihidir (sunucuda `prefs`). Sevilenler daha sık seçilir, sevilmeyenler yeni haftalara konmaz; sayfanın altındaki "Tercihleriniz" kartından geri alınır.
+
 ## Veri saklama
 
 Geçmiş haftalar `server/` klasöründeki Cloudflare Worker üzerinden ücretsiz bir D1 (SQLite) veritabanında tutulur; böylece her cihaz aynı planı görür. Tarayıcıdaki `localStorage` yalnızca çevrimdışı önbellektir: sunucuya ulaşılamazsa son kopya gösterilir, bağlantı gelince eşitlenir.
