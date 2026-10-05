@@ -9,6 +9,7 @@ const MAX_BODY = 100_000;
 const ID = /^[a-z0-9_-]{1,24}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const GRAIN = /^[a-z]{1,16}$/;
+const DONE = /^[a-z0-9_]{1,32}$/; // week.done: market listesinde alınan kalemler (besin anahtarı ya da x_limon gibi)
 /* plan.days: kullanıcının atadığı günler (0 = Pazartesi). Yoksa varsayılan 2+2+2+1.
    Varsa: her BESLENME 1–3 gün ve haftanın 7 günü tam bir kez dağıtılmış olmalı. */
 const SLOTS = [[0, 1], [2, 3], [4, 5], [6]];
@@ -67,7 +68,8 @@ function validState(s) {
     (w.start === undefined || DATE.test(w.start)) &&
     Array.isArray(w.plans) && w.plans.length === 4 &&
     w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d) && (p.g === undefined || GRAIN.test(p.g)) && (p.x === undefined || validX(p.x))) &&
-    validDays(w.plans));
+    validDays(w.plans) &&
+    (w.done === undefined || Array.isArray(w.done) && w.done.length <= 150 && w.done.every(k => typeof k === 'string' && DONE.test(k))));
   const customOk = s.custom.every(r => r && typeof r === 'object' && ID.test(r.id));
   const pr = s.prefs;
   const prefsOk = pr && typeof pr === 'object' && !Array.isArray(pr) && Object.keys(pr).length <= 300 &&
