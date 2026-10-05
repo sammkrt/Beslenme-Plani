@@ -9,6 +9,16 @@ const MAX_BODY = 100_000;
 const ID = /^[a-z0-9_-]{1,24}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const GRAIN = /^[a-z]{1,16}$/;
+/* plan.days: kullanıcının atadığı günler (0 = Pazartesi). Yoksa varsayılan 2+2+2+1.
+   Varsa: her BESLENME 1–3 gün ve haftanın 7 günü tam bir kez dağıtılmış olmalı. */
+const SLOTS = [[0, 1], [2, 3], [4, 5], [6]];
+function validDays(plans) {
+  if (!plans.some(p => p.days !== undefined)) return true;
+  const all = plans.map((p, i) => p.days === undefined ? SLOTS[i] : p.days);
+  if (all.some(a => !Array.isArray(a) || a.length < 1 || a.length > 3 || a.some(d => !Number.isInteger(d) || d < 0 || d > 6))) return false;
+  const f = all.flat();
+  return f.length === 7 && new Set(f).size === 7;
+}
 /* plan.x: kullanıcının öğünden çıkardığı malzeme satırları, ör. {b: [3], d: [0, 7]} */
 const validX = x => x && typeof x === 'object' && !Array.isArray(x) &&
   Object.entries(x).every(([k, a]) => ['b', 's', 'd'].includes(k) && Array.isArray(a) && a.length <= 30 &&
@@ -56,7 +66,8 @@ function validState(s) {
   const histOk = s.hist.every(w => w && Number.isInteger(w.no) && w.no > 0 && w.no < 100000 &&
     (w.start === undefined || DATE.test(w.start)) &&
     Array.isArray(w.plans) && w.plans.length === 4 &&
-    w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d) && (p.g === undefined || GRAIN.test(p.g)) && (p.x === undefined || validX(p.x))));
+    w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d) && (p.g === undefined || GRAIN.test(p.g)) && (p.x === undefined || validX(p.x))) &&
+    validDays(w.plans));
   const customOk = s.custom.every(r => r && typeof r === 'object' && ID.test(r.id));
   const pr = s.prefs;
   const prefsOk = pr && typeof pr === 'object' && !Array.isArray(pr) && Object.keys(pr).length <= 300 &&
