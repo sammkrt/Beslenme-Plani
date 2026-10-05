@@ -45,7 +45,7 @@ html{color-scheme:light dark}
   .plan.off{display:block!important}
   tr.sel td{background:none;font-weight:inherit}
   .plan.closed .meal,.card.closed .card-body{display:flex!important}
-  button.rm,tr.gone{display:none!important}
+  button.rm,tr.gone,.dayed{display:none!important}
   .plan-head{padding-right:16px}
   #shop,#nutri{break-before:page}
   @page{size:A4;margin:14mm}
@@ -117,6 +117,12 @@ button.warnb{color:var(--warn)}
 button.rm{width:22px;height:22px;padding:0;margin:0 6px 0 -4px;border-radius:99px;font-size:.72rem;line-height:1;color:var(--muted);vertical-align:1px}
 button.rm:hover{color:var(--warn);border-color:var(--warn)}
 tr.gone td{color:var(--muted)}
+.dayed{border-color:var(--accent)}
+.dgrid{width:auto}.dgrid th,.dgrid td{padding:3px;text-align:center;border:0}
+.dgrid tbody th{font-family:var(--display);color:var(--ink);padding-right:8px}
+button.dcell{width:36px;height:36px;padding:0;border-radius:8px;font-size:1rem;color:var(--accent)}
+button.dcell[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.dlist{margin:0;padding-left:18px}.warnt{color:var(--warn);font-weight:600}
 @media (max-width:480px){
   .meal th,.meal td{padding:5px 4px}
   .meal td.n,.meal th.n{padding-left:6px}
@@ -256,7 +262,16 @@ const F={
 const SECS=[['sebze','🥬 SEBZE & MEYVE'],['et','🥩 ET & BALIK'],['yum','🥚 YUMURTA'],['sut','🥛 SÜT ÜRÜNLERİ'],['ekmek','🍞 EKMEK & KAHVALTILIK'],['tahil','🍚 PİRİNÇ / BULGUR / MAKARNA / BAKLİYAT'],['kuru','🌰 KURUYEMİŞ & TOHUMLAR'],['sos','🥫 SOS / KONSERVE / BAHARAT']];
 const T={s:{name:'Samet',lo:1700,hi:1900,pmin:130},r:{name:'Raşe',lo:1400,hi:1500,pmin:95}};
 const DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
-const SLOTS=[[0,1],[2,3],[4,5],[6]];
+const SLOTS=[[0,1],[2,3],[4,5],[6]]; // varsayılan günler; plan.days ile kullanıcı değiştirebilir
+const daysOf=(p,i)=>p.days||SLOTS[i];
+/* Haftanın gün dağılımı geçerli mi: her gün tam bir BESLENME'de, her BESLENME 1–3 gün. */
+function validDays(plans){
+  const all=plans.map((p,i)=>daysOf(p,i));
+  if(all.some(a=>!Array.isArray(a)||a.length<1||a.length>3||a.some(d=>!Number.isInteger(d)||d<0||d>6)))return false;
+  const f=all.flat();return f.length===7&&new Set(f).size===7;
+}
+/* Gün listesini okunur yazar: ardışıksa "Pazartesi – Çarşamba", değilse "Pazartesi, Perşembe". */
+const dayText=a=>a.length>1&&a[a.length-1]-a[0]===a.length-1?DAYS[a[0]]+' – '+DAYS[a[a.length-1]]:a.map(d=>DAYS[d]).join(', ');
 /* salata: [besin, Samet, Raşe, 1=servis anında (toplu pişirmeye girmez)] */
 const SAL=(a,b)=>[['domates',100,100,1],['salatalik',100,100,1],['marul',40,40,1],['zyag',a,b,1]];
 const SOG=[['domates',100,100,1],['salatalik',100,100,1]];
@@ -456,7 +471,7 @@ function dropRemoved(p,ing){
   return ing;
 }
 function build(w){ // w={no,plans:[{b,s,d,g?,x?}]}
-  return w.plans.map((p,i)=>{const ing=dropRemoved(p,balance(p));return{...p,days:SLOTS[i],ing,
+  return w.plans.map((p,i)=>{const ing=dropRemoved(p,balance(p));return{...p,days:daysOf(p,i),ing,
     tot:{s:mac([...ing.b,...ing.s,...ing.d],1),r:mac([...ing.b,...ing.s,...ing.d],2)}}});
 }
 /* ===== HAFTA ÜRETİCİ: en uzun süredir kullanılmayanı seçer, geçen haftanın akşamlarını tekrar etmez ===== */
@@ -507,7 +522,8 @@ function generate(hist,forced,now=new Date()){
   const fd=forced?forced.filter(x=>x.two):[],fz=forced?forced.filter(x=>!x.two):[];
   const d=[...fd,...d0.filter(x=>!fd.includes(x))].slice(0,3),z=fz[0]||z0;
   const ss=pairSnacks(b,s,hist),dd=[...d,z],gs=Object.keys(GR).sort(()=>Math.random()-0.5);let gi=0;
-  return {no,start,plans:b.map((x,i)=>{const p={b:x.id,s:ss[i].id,d:dd[i].id};if(i<3&&grainOf(dd[i]))p.g=gs[gi++%gs.length];return p})}; // 3 akşama farklı tahıl
+  const last=hist.length?hist[hist.length-1]:null,lay=last&&validDays(last.plans)?last.plans.map((p,i)=>p.days):[]; // gün düzeni önceki haftadan
+  return {no,start,plans:b.map((x,i)=>{const p={b:x.id,s:ss[i].id,d:dd[i].id};if(i<3&&grainOf(dd[i]))p.g=gs[gi++%gs.length];if(lay[i])p.days=lay[i].slice();return p})}; // 3 akşama farklı tahıl
 }
 /* Ara öğünleri kahvaltılarla çakışmayacak şekilde sıralar: önce en az yer değiştiren sıralama,
    hiçbiri olmazsa çakışan ara öğün havuzdan çakışmayan başka biriyle değiştirilir. */
@@ -565,7 +581,7 @@ function shopText(w,plans){
   SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';sh[k].forEach(x=>t+='☐ '+x.n+' — '+x.buy+(x.need?' (gerekli: '+x.need+')':'')+'\n')});
   return t;
 }
-if(typeof module!=='undefined')module.exports={validRecipe,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
+if(typeof module!=='undefined')module.exports={validRecipe,validDays,daysOf,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
 
 /* ===== ARAYÜZ ===== */
 if(typeof document!=='undefined'){
@@ -575,7 +591,8 @@ const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let hist=[],cur=0,shopOpen=false,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
-const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x))));
+const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x)))&&validPlanDays(w));
+const validPlanDays=w=>!w.plans.some(p=>p.days!==undefined)||validDays(w.plans);
 const validX=x=>x&&typeof x==='object'&&Object.entries(x).every(([k,a])=>['b','s','d'].includes(k)&&Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=0&&n<30));
 function loadCustom(c){custom=[];if(Array.isArray(c))c.forEach(r=>{const v=validRecipe({...r,two_day:r.two},r.kind);if(v&&typeof r.id==='string'){v.id=r.id;custom.push(v);addCustom(v)}})}
 loadCustom(lsGet('beslenme-custom',[]));
@@ -633,7 +650,7 @@ const amt=(k,v)=>{if(!v)return '—';const u=F[k].u||'g';return nf(v)+' '+u};
 const r0=v=>Math.round(v);
 function mealHTML(label,rec,ing,days,isDinner,pi,k){
   const ms=mac(ing,1),mr=mac(ing,2);
-  let h='<div class="meal"><div><div class="eyebrow">'+label+'</div><h3>'+esc(rec.name)+(isDinner&&days>1?'<span class="badge">2 GÜNLÜK</span>':'')+'</h3></div>';
+  let h='<div class="meal"><div><div class="eyebrow">'+label+'</div><h3>'+esc(rec.name)+(isDinner&&days>1?'<span class="badge">'+days+' GÜNLÜK</span>':'')+'</h3></div>';
   h+='<div class="tscroll"><table><thead><tr><th>Malzeme</th><th class="n cs">Samet</th><th class="n cr">Raşe</th></tr></thead><tbody>';
   const ed=editable(hist[cur]);
   ing.forEach((i,j)=>{const nm=esc(F[i[0]].n);
@@ -642,7 +659,9 @@ function mealHTML(label,rec,ing,days,isDinner,pi,k){
   h+='<tr class="sum"><td>Öğün toplamı</td><td class="n">'+r0(ms[0])+' kcal · '+r0(ms[1])+' g P</td><td class="n">'+r0(mr[0])+' kcal · '+r0(mr[1])+' g P</td></tr></tbody></table></div>';
   h+='<div class="prep"><b>Hazırlanışı</b><ol>'+rec.steps.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>';
   if(isDinner&&days>1){const bt=ing.filter(i=>!i[3]&&!i[4]).map(i=>esc(F[i[0]].n.replace(/ \(.*\)/,''))+' '+amt(i[0],(i[1]+i[2])*days));
-    h+='<div class="batch"><b>Tencereye girecek toplam (2 kişi × 2 gün):</b> '+bt.join(' · ')+'. Pilav, yoğurt ve salata günlük hazırlanır; yemek buzdolabında kapalı kapta 2 gün saklanır. Tabağa koyarken eti/proteini tartarak paylaştırın.</div>'}
+    h+=Z.some(z=>z.id===rec.id) // ızgara/balık tek seferlik pişer: toplu pişirme yerine her gün taze
+      ?'<div class="batch"><b>'+days+' gün için toplam malzeme (2 kişi):</b> '+bt.join(' · ')+'. Izgara ve balık bekletilmez; her gün o günün porsiyonunu taze pişirin.</div>'
+      :'<div class="batch"><b>Tencereye girecek toplam (2 kişi × '+days+' gün):</b> '+bt.join(' · ')+'. Pilav, yoğurt ve salata günlük hazırlanır; yemek buzdolabında kapalı kapta '+days+' gün saklanır. Tabağa koyarken eti/proteini tartarak paylaştırın.</div>'}
   h+='</div>';
   const pv=PREFS[rec.id];
   h+='<div class="swap">'+(editable(hist[cur])?'<button class="small" data-swap="'+pi+':'+k+'">↻ Başka '+({b:'kahvaltı',s:'ara öğün',d:'akşam yemeği'})[k]+' getir</button>':'')+ // geçmiş haftalar değiştirilemez
@@ -672,15 +691,16 @@ function render(){
     '<h2>'+weekLabel(w)+'</h2><button class="small" id="wnext" aria-label="Sonraki hafta"'+(cur<hist.length-1?'':' disabled')+'>'+ARR('m9 18 6-6-6-6')+'</button></div>';
   const acts=[];
   if(ni>=0&&ni!==cur)acts.push('<button class="small" id="wnow">Bu haftaya dön</button>');
-  if(editable(w))acts.push('<button class="small" id="wregen">'+(sure('regen')?'Emin misin? Tekrar dokun':'↻ Menüyü yeniden oluştur')+'</button>',
+  if(editable(w))acts.push('<button class="small" id="wdays" aria-pressed="'+!!editDays+'">📅 Günleri düzenle</button>','<button class="small" id="wregen">'+(sure('regen')?'Emin misin? Tekrar dokun':'↻ Menüyü yeniden oluştur')+'</button>',
     '<button class="small warnb" id="wdel">'+(sure('del')?'Emin misin? Tekrar dokun':'Bu haftayı sil')+'</button>');
   if(acts.length)h+='<div class="wact">'+acts.join('')+'</div>';
+  if(editDays&&editable(w))h+=dayEditor();
   h+='<div class="dayf" role="group" aria-label="Güne göre filtrele">'+
     ['Tümü','Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map((l,j)=>{const d=j?j-1:null;
       return '<button class="small'+(isNow(w)&&d===today()?' today':'')+'" data-day="'+(d===null?'':d)+'" aria-pressed="'+(day===d)+'">'+l+(d===null?'':'<small>'+parseYmd(addDays(w.start,d)).getDate()+'</small>')+'</button>'}).join('')+'</div>';
   plans.forEach((p,i)=>{const n=p.days.length;
     const show=day===null||p.days.includes(day),op=day!==null||!closed.includes(i); // seçilen günün kartı hep açık gelir
-    h+='<article class="plan'+(op?'':' closed')+(show?'':' off')+'" data-plan="'+i+'"><div class="plan-head"><span class="no">BESLENME – '+(i+1)+' –</span><span class="freq">Haftada '+n+' gün</span><span class="days">'+p.days.map(d=>DAYS[d]).join(' – ')+'</span>'+
+    h+='<article class="plan'+(op?'':' closed')+(show?'':' off')+'" data-plan="'+i+'"><div class="plan-head"><span class="no">BESLENME – '+(i+1)+' –</span><span class="freq">Haftada '+n+' gün</span><span class="days">'+dayText(p.days)+'</span>'+
       '<button class="chev" aria-expanded="'+op+'" aria-label="BESLENME '+(i+1)+' göster/gizle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>';
     h+=mealHTML('Kahvaltı',ALL[p.b],p.ing.b,n,false,i,'b')+mealHTML('Ara öğün',ALL[p.s],p.ing.s,n,false,i,'s')+mealHTML('Akşam yemeği',view(p,'d'),p.ing.d,n,true,i,'d')+'</article>'});
   $('menu').innerHTML=h;
@@ -723,7 +743,18 @@ $('btnNew').onclick=()=>{
 /* Yeniden oluştur / sil: ilk dokunuşta düğme "Emin misin?" olur, 4 sn içinde ikinci dokunuş onaylar. */
 let confirmKey=null;
 function arm(k){confirmKey=k;render();clearTimeout(arm.t);arm.t=setTimeout(()=>{if(confirmKey===k){confirmKey=null;render()}},4000)}
-function go(i){cur=i;day=defDay();confirmKey=null;render()}
+function go(i){cur=i;day=defDay();confirmKey=null;editDays=null;render()}
+/* Gün düzenleyici: satır = BESLENME, sütun = gün. Hücreye dokununca o gün o BESLENME'ye geçer (her biri 1–3 gün). */
+let editDays=null;
+const SD=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+function dayEditor(){
+  let h='<section class="card dayed"><h3>Günleri düzenle</h3><p class="note">Bir güne dokunarak o günü bir BESLENME’ye verin. Her BESLENME 1–3 gün; günler ardışık olmak zorunda değil.</p>'+
+    '<div class="tscroll"><table class="dgrid"><thead><tr><th></th>'+SD.map(d=>'<th>'+d+'</th>').join('')+'</tr></thead><tbody>';
+  editDays.forEach((a,i)=>{h+='<tr><th>B'+(i+1)+'</th>'+SD.map((_,d)=>'<td><button class="dcell" data-dc="'+i+':'+d+'" aria-pressed="'+a.includes(d)+'" aria-label="BESLENME '+(i+1)+', '+DAYS[d]+'">'+(a.includes(d)?'●':'')+'</button></td>').join('')+'</tr>'});
+  h+='</tbody></table></div><ul class="note dlist">'+editDays.map((a,i)=>{const sp=a[a.length-1]-a[0]+1;
+    return '<li><b>BESLENME '+(i+1)+':</b> '+dayText(a)+' ('+a.length+' gün)'+(a.length>1&&sp>3?' <span class="warnt">⚠ ilk ve son gün arası '+sp+' gün: pişmiş yemek 3 günden fazla beklemesin, gerekirse dondurun</span>':'')+'</li>'}).join('')+'</ul>';
+  return h+'<div class="wact" style="justify-content:flex-start;margin:0"><button class="small primary" id="dsave">Kaydet</button><button class="small" id="dcancel">Vazgeç</button></div></section>';
+}
 $('btnShop').onclick=()=>{shopOpen=true;render();$('shop').scrollIntoView({behavior:'smooth',block:'start'})};
 document.addEventListener('click',e=>{
   const t=e.target,head=t.closest&&t.closest('.plan-head'),chead=t.closest&&t.closest('.card-head');
@@ -736,6 +767,15 @@ document.addEventListener('click',e=>{
   if(t.closest&&t.closest('#wprev')){if(cur>0)go(cur-1)}
   else if(t.closest&&t.closest('#wnext')){if(cur<hist.length-1)go(cur+1)}
   else if(t.id==='wnow')go(pickCur());
+  else if(t.id==='wdays'){editDays=editDays?null:hist[cur].plans.map((p,i)=>daysOf(p,i).slice());render()}
+  else if(t.id==='dcancel'){editDays=null;render()}
+  else if(t.dataset&&t.dataset.dc){const[i,d]=t.dataset.dc.split(':').map(Number),o=editDays.findIndex(a=>a.includes(d));
+    if(o===i)return;
+    if(editDays[o].length===1)return toast('BESLENME '+(o+1)+' en az 1 gün olmalı; önce ona başka bir gün verin');
+    if(editDays[i].length===3)return toast('Bir BESLENME en fazla 3 gün olabilir');
+    editDays[o]=editDays[o].filter(x=>x!==d);editDays[i]=[...editDays[i],d].sort((a,b)=>a-b);render()}
+  else if(t.id==='dsave'){hist[cur].plans.forEach((p,i)=>{const a=editDays[i];if(a.join()===SLOTS[i].join())delete p.days;else p.days=a});
+    editDays=null;day=defDay();save();render();toast('Günler kaydedildi')}
   else if(t.id==='wregen'){if(confirmKey!=='regen')return arm('regen');confirmKey=null;
     const w=hist[cur];w.plans=generate(hist.slice(0,cur+1)).plans; // bu haftanın akşamları da "geçen hafta" sayılır, böylece farklı menü gelir
     save();render();toast(weekLabel(w)+' menüsü yeniden oluşturuldu')}
