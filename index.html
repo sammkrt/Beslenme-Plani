@@ -117,6 +117,7 @@ button.warnb{color:var(--warn)}
 button.rm{width:22px;height:22px;padding:0;margin:0 6px 0 -4px;border-radius:99px;font-size:.72rem;line-height:1;color:var(--muted);vertical-align:1px}
 button.rm:hover{color:var(--warn);border-color:var(--warn)}
 tr.gone td{color:var(--muted)}
+.shopprog{margin:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .dayed{border-color:var(--accent)}
 .dgrid{width:auto}.dgrid th,.dgrid td{padding:3px;text-align:center;border:0}
 .dgrid tbody th{font-family:var(--display);color:var(--ink);padding-right:8px}
@@ -570,15 +571,15 @@ function shopping(plans){
     else if(f.piece){buy=Math.ceil(q/f.piece-0.1)+' adet';need=gkg(q)}
     else{const u=f.u==='ml'?'ml':'g',st=q>1000?100:50,b=Math.ceil(q/st)*st;
       buy=u==='ml'?(b>=1000?nf(b/1000)+' L':b+' ml'):gkg(b);need=u==='ml'?nf(q)+' ml':gkg(q)}
-    out[f.sec].push({n:f.n,buy,need});
+    out[f.sec].push({k,n:f.n,buy,need});
   });
-  out.sebze.push({n:'Limon',buy:'3 adet'},{n:'Maydanoz / dereotu',buy:'1’er demet'},{n:'Sarımsak',buy:'1 baş'});
-  if(sp.size)out.sos.push({n:'Baharat (evde yoksa): '+[...sp].sort((a,b)=>a.localeCompare(b,'tr')).join(', '),buy:'küçük paket'});
+  out.sebze.push({k:'x_limon',n:'Limon',buy:'3 adet'},{k:'x_yesillik',n:'Maydanoz / dereotu',buy:'1’er demet'},{k:'x_sarimsak',n:'Sarımsak',buy:'1 baş'});
+  if(sp.size)out.sos.push({k:'x_baharat',n:'Baharat (evde yoksa): '+[...sp].sort((a,b)=>a.localeCompare(b,'tr')).join(', '),buy:'küçük paket'});
   return out;
 }
 function shopText(w,plans){
   const sh=shopping(plans);let t=(w.start?rangeLabel(w.start).toLocaleUpperCase('tr-TR'):'HAFTA '+w.no)+' – MARKET LİSTESİ (Samet + Raşe, 7 gün)\n';
-  SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';sh[k].forEach(x=>t+='☐ '+x.n+' — '+x.buy+(x.need?' (gerekli: '+x.need+')':'')+'\n')});
+  SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';sh[k].forEach(x=>t+=((w.done||[]).includes(x.k)?'☑ ':'☐ ')+x.n+' — '+x.buy+(x.need?' (gerekli: '+x.need+')':'')+'\n')});
   return t;
 }
 if(typeof module!=='undefined')module.exports={validRecipe,validDays,daysOf,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
@@ -591,7 +592,8 @@ const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let hist=[],cur=0,shopOpen=false,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
-const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x)))&&validPlanDays(w));
+const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x)))&&validPlanDays(w)&&validDone(w));
+const validDone=w=>w.done===undefined||Array.isArray(w.done)&&w.done.length<=150&&w.done.every(k=>typeof k==='string'&&/^[a-z0-9_]{1,32}$/.test(k));
 const validPlanDays=w=>!w.plans.some(p=>p.days!==undefined)||validDays(w.plans);
 const validX=x=>x&&typeof x==='object'&&Object.entries(x).every(([k,a])=>['b','s','d'].includes(k)&&Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=0&&n<30));
 function loadCustom(c){custom=[];if(Array.isArray(c))c.forEach(r=>{const v=validRecipe({...r,two_day:r.two},r.kind);if(v&&typeof r.id==='string'){v.id=r.id;custom.push(v);addCustom(v)}})}
@@ -600,7 +602,12 @@ function loadPrefs(o){Object.keys(PREFS).forEach(k=>delete PREFS[k]);if(o&&typeo
 loadPrefs(lsGet('beslenme-prefs',{}));
 {const h=lsGet('beslenme-hist',[]);if(validHist(h)){hist=h;if(datedHist(hist))dirty=true}} // eski 'Hafta 5' kayıtları tarihe taşınır
 function saveLocal(){lsSet('beslenme-hist',hist);lsSet('beslenme-custom',custom);lsSet('beslenme-prefs',PREFS);lsSet('beslenme-ver',ver);lsSet('beslenme-dirty',dirty)}
-function save(){dirty=true;saveLocal();push()}
+function save(){seq++;dirty=true;otherDirty=true;saveLocal();push()}
+/* Market işaretleri iki telefondan aynı anda değişebilir: her işaret bir işlem olarak tutulur ve
+   sunucuda daha yeni bir sürüm varsa onun üzerine yeniden uygulanır (kimsenin işareti kaybolmaz). */
+let pendingOps=[],otherDirty=false,seq=0; // seq: her değişiklikte artar; gönderim sırasında yeni değişiklik olduysa kirli kalır
+function applyOp(o){const w=hist.find(x=>x.start===o.start);if(!w)return;const a=new Set(w.done||[]);o.on?a.add(o.k):a.delete(o.k);if(a.size)w.done=[...a];else delete w.done}
+function check(k,on){const o={start:hist[cur].start,k,on};pendingOps.push(o);applyOp(o);seq++;dirty=true;saveLocal();render();push()}
 const SYNC={init:['Eşitleniyor…',0],ok:['☁︎ Bulutla eşitlendi',0],nopin:['Salt okunur: kaydetmek için PIN girin',1],badpin:['PIN hatalı',1],off:['Çevrimdışı: bu cihazdaki kopya',1]};
 function syncSpan(){const s=SYNC[sync];return '<span id="sync" class="sync'+(s[1]?' bad':'')+'">'+s[0]+'</span>'}
 function syncHTML(){return syncSpan()+'<button class="small" id="pin">'+(pin?'PIN değiştir':'PIN gir')+'</button>'}
@@ -609,7 +616,11 @@ function setSync(s){sync=s;const el=$('sync');if(el)el.outerHTML=syncSpan()}
 function adopt(d){
   const keep=custom;loadCustom(d.custom);
   if(!validHist(d.hist)){custom=keep;return false} // boş liste de geçerli: tüm haftalar silinmiş olabilir
-  loadPrefs(d.prefs);hist=d.hist;ver=d.v;dirty=datedHist(hist);cur=pickCur();day=defDay();saveLocal();render();if(dirty)push();return true;
+  const was=hist[cur]&&hist[cur].start;                       // açık olan haftada kal (arka plan eşitlemesi ekranı zıplatmasın)
+  loadPrefs(d.prefs);hist=d.hist;ver=d.v;dirty=datedHist(hist);
+  const i=hist.findIndex(w=>w.start===was);if(i>=0)cur=i;else{cur=pickCur();day=defDay();editDays=null}
+  if(pendingOps.length){pendingOps.forEach(applyOp);dirty=true}
+  saveLocal();render();if(dirty)push();return true;
 }
 /* Gönderimler sıraya alınır; böylece art arda iki değişiklik aynı sürüm üzerine yazmaya çalışmaz. */
 /* Gün filtresi: null = tüm hafta. Güncel haftada bugün, geçmiş haftalarda tüm hafta seçili gelir. */
@@ -626,13 +637,16 @@ function push(){queue=queue.then(doPush);return queue}
 async function doPush(){
   if(!dirty)return;
   if(!pin){setSync('nopin');return}
+  const s0=seq,n0=pendingOps.length;
   try{
     const r=await fetch(API+'/api/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Pin':pin},body:JSON.stringify({base:ver,hist,custom,prefs:PREFS})});
     if(r.status===401){setSync('badpin');return}
     const d=await r.json();
-    if(r.status===409){if(adopt(d))toast('Başka cihazda değişiklik vardı; güncel plan yüklendi');setSync('ok');return}
+    if(r.status===409){const lost=otherDirty;if(adopt(d)&&lost)toast('Başka cihazda değişiklik vardı; güncel plan yüklendi');otherDirty=false;setSync('ok');return}
     if(!r.ok)throw new Error(r.status);
-    ver=d.v;dirty=false;saveLocal();setSync('ok');
+    ver=d.v;pendingOps=pendingOps.slice(n0);
+    if(seq===s0){dirty=false;otherDirty=false}else push(); // gönderim sürerken yapılan değişiklikler de gitsin
+    saveLocal();setSync('ok');
   }catch(e){setSync('off')}
 }
 async function pull(){
@@ -641,8 +655,8 @@ async function pull(){
     const d=await r.json();
     if(d.v===0){ver=0;if(hist.length){dirty=true;saveLocal();await push()}return}   // sunucu boş: bu cihazdaki geçmişi yükle
     if(d.v===ver){if(dirty)await push();else setSync(pin?'ok':'nopin');return} // sunucuda yenilik yok
-    const lost=dirty&&d.v!==ver;
-    if(adopt(d)){setSync(pin?'ok':'nopin');if(lost)toast('Başka cihazda değişiklik vardı; bu cihazdaki kaydedilmemiş değişiklik yerine güncel plan yüklendi')}
+    const lost=otherDirty&&d.v!==ver;
+    if(adopt(d)){otherDirty=false;setSync(pin?'ok':'nopin');if(lost)toast('Başka cihazda değişiklik vardı; bu cihazdaki kaydedilmemiş değişiklik yerine güncel plan yüklendi')}
   }catch(e){setSync('off')}
 }
 function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,3200)}
@@ -729,8 +743,11 @@ function renderPrefs(){
 }
 function renderShop(w,plans){
   const el=$('shop');el.hidden=!shopOpen;if(!shopOpen)return;
-  const sh=shopping(plans);let h='<h2>'+rangeLabel(w.start)+' – Market alışveriş listesi</h2><p class="note">Samet + Raşe toplamı, 7 gün. Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır.</p>';
-  let n=0;SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+sh[k].map(x=>'<li><label><input type="checkbox" id="ck'+(n++)+'"><span>'+esc(x.n)+' — <b>'+x.buy+'</b>'+(x.need?' <small>(gerekli: '+x.need+')</small>':'')+'</span></label></li>').join('')+'</ul>'});
+  const sh=shopping(plans),all=Object.values(sh).flat(),nd=all.filter(x=>(w.done||[]).includes(x.k)).length;
+  let h='<h2>'+rangeLabel(w.start)+' – Market alışveriş listesi</h2><p class="note">Samet + Raşe toplamı, 7 gün. Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır. İşaretlediğiniz kalemler iki telefonda da görünür.</p>'+
+    '<p class="shopprog"><b>'+nd+' / '+all.length+'</b> alındı'+(nd?' <button class="small" id="ckclear">İşaretleri temizle</button>':'')+'</p>';
+  const done=w.done||[];
+  SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+sh[k].map(x=>'<li><label><input type="checkbox" data-ck="'+x.k+'"'+(done.includes(x.k)?' checked':'')+'><span>'+esc(x.n)+' — <b>'+x.buy+'</b>'+(x.need?' <small>(gerekli: '+x.need+')</small>':'')+'</span></label></li>').join('')+'</ul>'});
   h+='<div><button id="copy">Listeyi kopyala (Apple Notes)</button></div><textarea id="shoptxt" readonly aria-label="Kopyalanabilir alışveriş listesi"></textarea>';
   el.innerHTML=h;$('shoptxt').value=shopText(w,plans);
 }
@@ -755,7 +772,7 @@ function dayEditor(){
     return '<li><b>BESLENME '+(i+1)+':</b> '+dayText(a)+' ('+a.length+' gün)'+(a.length>1&&sp>3?' <span class="warnt">⚠ ilk ve son gün arası '+sp+' gün: pişmiş yemek 3 günden fazla beklemesin, gerekirse dondurun</span>':'')+'</li>'}).join('')+'</ul>';
   return h+'<div class="wact" style="justify-content:flex-start;margin:0"><button class="small primary" id="dsave">Kaydet</button><button class="small" id="dcancel">Vazgeç</button></div></section>';
 }
-$('btnShop').onclick=()=>{shopOpen=true;render();$('shop').scrollIntoView({behavior:'smooth',block:'start'})};
+$('btnShop').onclick=()=>{shopOpen=true;render();$('shop').scrollIntoView({behavior:'smooth',block:'start'});if(!dirty){lastPoll=Date.now();pull()}}; // diğer telefonun işaretlerini hemen al
 document.addEventListener('click',e=>{
   const t=e.target,head=t.closest&&t.closest('.plan-head'),chead=t.closest&&t.closest('.card-head');
   if(chead){const c=chead.parentNode,k=c.id,x=c.classList.toggle('closed');
@@ -797,6 +814,8 @@ document.addEventListener('click',e=>{
     else{x[k]=[...a,n].sort((u,v)=>u-v);toast(name+' çıkarıldı: günde Samet −'+kc(row[1])+' kcal, Raşe −'+kc(row[2])+' kcal')}
     if(!x[k].length)delete x[k];if(!Object.keys(x).length)delete p.x;
     save();render()}
+  else if(t.dataset&&t.dataset.ck!==undefined)check(t.dataset.ck,t.checked);
+  else if(t.id==='ckclear'){const w=hist[cur];(w.done||[]).slice().forEach(k=>check(k,false));toast('İşaretler temizlendi')}
   else if(t.id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
   else if(t.id==='copy'){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')})}
 });
@@ -815,6 +834,10 @@ pull().then(()=>{if(!hist.length&&!ver){hist.push(generate([]));cur=0;day=defDay
   else if(!hist.length)render();
   if(wantPdf){toast('Yazdırma penceresi açılmazsa PDF Olarak İndir’e dokunun');printNow()}}); // sunucudaki güncel plan geldikten sonra yazdır
 addEventListener('online',()=>{if(dirty)push()});
+/* Diğer telefondaki değişiklikleri getir: market listesi açıkken 5 sn'de, değilse 60 sn'de bir; sekme görünürken. */
+let lastPoll=Date.now();
+setInterval(()=>{if(document.hidden||dirty||!shopOpen&&Date.now()-lastPoll<60000)return;lastPoll=Date.now();pull()},5000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!dirty){lastPoll=Date.now();pull()}});
 /* Aşağı çekip yenile: tarayıcılar bunu kendisi yapar, yalnızca ana ekran uygulamasında (standalone) etkin. */
 if(navigator.standalone===true||matchMedia('(display-mode: standalone)').matches){
   const ind=$('ptr'),MAX=90,AT=64;let y0=null,d=0;
