@@ -1,12 +1,14 @@
 /* Beslenme Planı API — Cloudflare Worker + D1.
    Tek satırlık durum: {hist, custom} JSON'u ve sürüm numarası v.
-   GET  /api/state  → {v, hist, custom, updated}         (herkese açık okuma)
-   PUT  /api/state  → gövde {base, hist, custom}, X-Pin başlığı zorunlu.
+   GET  /api/state  → {v, hist, custom, prefs, updated}  (herkese açık okuma)
+   PUT  /api/state  → gövde {base, hist, custom, prefs?}, X-Pin başlığı zorunlu.
+                      prefs = {tarifId: 1 (sevdik) | -1 (sevmedik)}; gönderilmezse kayıtlı tercihler korunur.
                       base, sunucudaki v ile aynı değilse 409 + güncel durum döner. */
 
 const MAX_BODY = 100_000;
 const ID = /^[a-z0-9_-]{1,24}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const GRAIN = /^[a-z]{1,16}$/;
 const KEEP_BACKUPS = 200;
 
 function cors(req, env) {
@@ -50,16 +52,19 @@ function validState(s) {
   const histOk = s.hist.every(w => w && Number.isInteger(w.no) && w.no > 0 && w.no < 100000 &&
     (w.start === undefined || DATE.test(w.start)) &&
     Array.isArray(w.plans) && w.plans.length === 4 &&
-    w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d)));
+    w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d) && (p.g === undefined || GRAIN.test(p.g))));
   const customOk = s.custom.every(r => r && typeof r === 'object' && ID.test(r.id));
-  return histOk && customOk;
+  const pr = s.prefs;
+  const prefsOk = pr && typeof pr === 'object' && !Array.isArray(pr) && Object.keys(pr).length <= 300 &&
+    Object.entries(pr).every(([k, v]) => ID.test(k) && (v === 1 || v === -1));
+  return histOk && customOk && prefsOk;
 }
 
 async function readState(env) {
   const row = await env.DB.prepare('SELECT v, data, updated FROM state WHERE id = 1').first();
-  if (!row) return { v: 0, hist: [], custom: [], updated: null };
+  if (!row) return { v: 0, hist: [], custom: [], prefs: {}, updated: null };
   const d = JSON.parse(row.data);
-  return { v: row.v, hist: d.hist, custom: d.custom, updated: row.updated };
+  return { v: row.v, hist: d.hist, custom: d.custom, prefs: d.prefs || {}, updated: row.updated };
 }
 
 export default {
@@ -79,7 +84,8 @@ export default {
       if (text.length > MAX_BODY) return json({ error: 'too_large' }, 413, req, env);
       let body;
       try { body = JSON.parse(text); } catch { return json({ error: 'bad_json' }, 400, req, env); }
-      const state = { hist: body.hist, custom: body.custom };
+      // Eski sürüm sayfalar prefs göndermez: o durumda kayıtlı tercihleri koru.
+      const state = { hist: body.hist, custom: body.custom, prefs: body.prefs === undefined ? (await readState(env)).prefs : body.prefs };
       if (!Number.isInteger(body.base) || body.base < 0 || !validState(state)) return json({ error: 'invalid' }, 400, req, env);
 
       const data = JSON.stringify(state), now = new Date().toISOString();
