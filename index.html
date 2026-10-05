@@ -45,6 +45,7 @@ html{color-scheme:light dark}
   .plan.off{display:block!important}
   tr.sel td{background:none;font-weight:inherit}
   .plan.closed .meal,.card.closed .card-body{display:flex!important}
+  button.rm,tr.gone{display:none!important}
   .plan-head{padding-right:16px}
   #shop,#nutri{break-before:page}
   @page{size:A4;margin:14mm}
@@ -113,6 +114,14 @@ button.warnb{color:var(--warn)}
 .swap .prefs button{min-width:40px}
 .swap .prefs button[aria-pressed="true"]{background:var(--soft);color:var(--ink);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .plist{margin:0;padding-left:18px}.plist li{padding:3px 0}
+button.rm{width:22px;height:22px;padding:0;margin:0 6px 0 -4px;border-radius:99px;font-size:.72rem;line-height:1;color:var(--muted);vertical-align:1px}
+button.rm:hover{color:var(--warn);border-color:var(--warn)}
+tr.gone td{color:var(--muted)}
+@media (max-width:480px){
+  .meal th,.meal td{padding:5px 4px}
+  .meal td.n,.meal th.n{padding-left:6px}
+  button.rm{width:20px;height:20px;margin:0 5px 0 0;font-size:.66rem}
+}
 .dayf button.today{box-shadow:inset 0 -3px 0 var(--accent)}
 .plan.off{display:none}
 td.warn{background:var(--warn-bg);color:var(--warn);font-weight:700}
@@ -439,8 +448,15 @@ function balance(p){
   all.forEach(i=>{if(F[i[0]].flex&&i[2]>i[1])i[1]=i[2]}); // Raşe'nin porsiyonu Samet'inkini geçmesin
   return {b:meals[0],s:meals[1],d:meals[2]};
 }
-function build(w){ // w={no,plans:[{b,s,d}]}
-  return w.plans.map((p,i)=>{const ing=balance(p);return{...p,days:SLOTS[i],ing,
+/* plan.x = {b|s|d: [satır sırası]}: kullanıcının çıkardığı malzemeler. Porsiyonlar önce tam tarifle dengelenir,
+   sonra çıkarılan satır sıfırlanır; böylece açık başka malzemeyle kapatılmaz, öğün ve gün toplamı düşer.
+   Satır: [besin, Samet, Raşe, servis, 1=çıkarıldı, Samet(önce), Raşe(önce)] */
+function dropRemoved(p,ing){
+  ['b','s','d'].forEach(k=>((p.x&&p.x[k])||[]).forEach(j=>{const r=ing[k][j];if(r&&!r[4])ing[k][j]=[r[0],0,0,r[3]?1:0,1,r[1],r[2]]}));
+  return ing;
+}
+function build(w){ // w={no,plans:[{b,s,d,g?,x?}]}
+  return w.plans.map((p,i)=>{const ing=dropRemoved(p,balance(p));return{...p,days:SLOTS[i],ing,
     tot:{s:mac([...ing.b,...ing.s,...ing.d],1),r:mac([...ing.b,...ing.s,...ing.d],2)}}});
 }
 /* ===== HAFTA ÜRETİCİ: en uzun süredir kullanılmayanı seçer, geçen haftanın akşamlarını tekrar etmez ===== */
@@ -525,7 +541,7 @@ function shopping(plans){
   const tot={},sp=new Set();
   plans.forEach(p=>{['b','s','d'].forEach(k=>{p.ing[k].forEach(i=>{tot[i[0]]=(tot[i[0]]||0)+(i[1]+i[2])*p.days.length});(ALL[p[k]].spice||[]).forEach(x=>sp.add(x))})});
   const out={};SECS.forEach(s=>out[s[0]]=[]);
-  Object.keys(tot).sort((a,b)=>F[a].n.localeCompare(F[b].n,'tr')).forEach(k=>{
+  Object.keys(tot).filter(k=>tot[k]>0).sort((a,b)=>F[a].n.localeCompare(F[b].n,'tr')).forEach(k=>{ // tamamen çıkarılanlar listeye girmez
     const f=F[k],q=tot[k];let buy,need='';
     if(f.u==='ölçek'){buy=nf(q)+' ölçek';need='~'+nf(q*30)+' g'}
     else if(k==='yumurta'){buy=Math.ceil(q)+' adet'}
@@ -549,7 +565,7 @@ function shopText(w,plans){
   SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';sh[k].forEach(x=>t+='☐ '+x.n+' — '+x.buy+(x.need?' (gerekli: '+x.need+')':'')+'\n')});
   return t;
 }
-if(typeof module!=='undefined')module.exports={validRecipe,B,S,D,Z,GR,view,grainOf,PREFS,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
+if(typeof module!=='undefined')module.exports={validRecipe,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
 
 /* ===== ARAYÜZ ===== */
 if(typeof document!=='undefined'){
@@ -559,7 +575,8 @@ const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let hist=[],cur=0,shopOpen=false,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
-const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])));
+const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x))));
+const validX=x=>x&&typeof x==='object'&&Object.entries(x).every(([k,a])=>['b','s','d'].includes(k)&&Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=0&&n<30));
 function loadCustom(c){custom=[];if(Array.isArray(c))c.forEach(r=>{const v=validRecipe({...r,two_day:r.two},r.kind);if(v&&typeof r.id==='string'){v.id=r.id;custom.push(v);addCustom(v)}})}
 loadCustom(lsGet('beslenme-custom',[]));
 function loadPrefs(o){Object.keys(PREFS).forEach(k=>delete PREFS[k]);if(o&&typeof o==='object')Object.entries(o).forEach(([k,v])=>{if(ALL[k]&&(v===1||v===-1))PREFS[k]=v})}
@@ -618,10 +635,13 @@ function mealHTML(label,rec,ing,days,isDinner,pi,k){
   const ms=mac(ing,1),mr=mac(ing,2);
   let h='<div class="meal"><div><div class="eyebrow">'+label+'</div><h3>'+esc(rec.name)+(isDinner&&days>1?'<span class="badge">2 GÜNLÜK</span>':'')+'</h3></div>';
   h+='<div class="tscroll"><table><thead><tr><th>Malzeme</th><th class="n cs">Samet</th><th class="n cr">Raşe</th></tr></thead><tbody>';
-  ing.forEach(i=>h+='<tr><td>'+esc(F[i[0]].n)+'</td><td class="n">'+amt(i[0],i[1])+'</td><td class="n">'+amt(i[0],i[2])+'</td></tr>');
+  const ed=editable(hist[cur]);
+  ing.forEach((i,j)=>{const nm=esc(F[i[0]].n);
+    if(i[4])h+='<tr class="gone"><td>'+(ed?'<button class="rm" data-rm="'+pi+':'+k+':'+j+'" aria-label="'+nm+' geri ekle" title="Geri ekle">↺</button>':'')+'<s>'+nm+'</s></td><td class="n"><s>'+amt(i[0],i[5])+'</s></td><td class="n"><s>'+amt(i[0],i[6])+'</s></td></tr>';
+    else h+='<tr><td>'+(ed?'<button class="rm" data-rm="'+pi+':'+k+':'+j+'" aria-label="'+nm+' çıkar" title="Menüden çıkar">✕</button>':'')+nm+'</td><td class="n">'+amt(i[0],i[1])+'</td><td class="n">'+amt(i[0],i[2])+'</td></tr>'});
   h+='<tr class="sum"><td>Öğün toplamı</td><td class="n">'+r0(ms[0])+' kcal · '+r0(ms[1])+' g P</td><td class="n">'+r0(mr[0])+' kcal · '+r0(mr[1])+' g P</td></tr></tbody></table></div>';
   h+='<div class="prep"><b>Hazırlanışı</b><ol>'+rec.steps.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>';
-  if(isDinner&&days>1){const bt=ing.filter(i=>!i[3]).map(i=>esc(F[i[0]].n.replace(/ \(.*\)/,''))+' '+amt(i[0],(i[1]+i[2])*days));
+  if(isDinner&&days>1){const bt=ing.filter(i=>!i[3]&&!i[4]).map(i=>esc(F[i[0]].n.replace(/ \(.*\)/,''))+' '+amt(i[0],(i[1]+i[2])*days));
     h+='<div class="batch"><b>Tencereye girecek toplam (2 kişi × 2 gün):</b> '+bt.join(' · ')+'. Pilav, yoğurt ve salata günlük hazırlanır; yemek buzdolabında kapalı kapta 2 gün saklanır. Tabağa koyarken eti/proteini tartarak paylaştırın.</div>'}
   h+='</div>';
   const pv=PREFS[rec.id];
@@ -724,12 +744,19 @@ document.addEventListener('click',e=>{
   else if(t.dataset&&t.dataset.day!==undefined){day=t.dataset.day===''?null:+t.dataset.day;render()}
   else if(t.dataset&&t.dataset.swap){const[i,k]=t.dataset.swap.split(':'),p=hist[cur].plans[+i],key=hist[cur].no+':'+t.dataset.swap,seen=swapSeen[key]||(swapSeen[key]=new Set());
     seen.add(p[k]);const id=swapPick(hist,cur,+i,k,seen);if(!id){toast('Bu öğün için uygun başka tarif yok');return}
-    const old=ALL[p[k]].name;p[k]=id;seen.add(id);save();render();toast(old+' → '+ALL[id].name)}
+    const old=ALL[p[k]].name;p[k]=id;if(p.x){delete p.x[k];if(!Object.keys(p.x).length)delete p.x}seen.add(id);save();render();toast(old+' → '+ALL[id].name)}
   else if(t.closest&&t.closest('[data-pref]')){const[id,v]=t.closest('[data-pref]').dataset.pref.split(':'),n=+v,name=ALL[id].name;
     if(PREFS[id]===n){delete PREFS[id];toast(name+': tercih kaldırıldı')}
     else{PREFS[id]=n;toast(n===1?'👍 '+name+' daha sık gelecek':'👎 '+name+' bir daha önerilmeyecek'+(editable(hist[cur])?'. Bu haftadan çıkarmak için “Başka … getir”':''))}
     save();render()}
   else if(t.dataset&&t.dataset.unpref){const name=ALL[t.dataset.unpref].name;delete PREFS[t.dataset.unpref];save();render();toast(name+': tercih kaldırıldı')}
+  else if(t.dataset&&t.dataset.rm){const[pi,k,j]=t.dataset.rm.split(':'),p=hist[cur].plans[+pi],x=p.x||(p.x={}),a=x[k]||[],n=+j;
+    const row=build({plans:hist[cur].plans})[+pi].ing[k][n],name=F[row[0]].n.replace(/ \(.*\)/,'');
+    const kc=v=>Math.round(F[row[0]].u==='adet'||F[row[0]].u==='ölçek'?F[row[0]].m[0]*v:F[row[0]].m[0]*v/100);
+    if(a.includes(n)){x[k]=a.filter(v=>v!==n);toast(name+' geri eklendi')}
+    else{x[k]=[...a,n].sort((u,v)=>u-v);toast(name+' çıkarıldı: günde Samet −'+kc(row[1])+' kcal, Raşe −'+kc(row[2])+' kcal')}
+    if(!x[k].length)delete x[k];if(!Object.keys(x).length)delete p.x;
+    save();render()}
   else if(t.id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
   else if(t.id==='copy'){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')})}
 });
