@@ -44,7 +44,7 @@ html{color-scheme:light dark}
   .wnav{display:block}.wnav h2{text-align:left}
   .plan.off{display:block!important}
   tr.sel td{background:none;font-weight:inherit}
-  .plan.closed .meal{display:flex!important}
+  .plan.closed .meal,.card.closed .card-body{display:flex!important}
   .plan-head{padding-right:16px}
   #shop,#nutri{break-before:page}
   @page{size:A4;margin:14mm}
@@ -78,7 +78,11 @@ button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:v
 .plan-head{background:var(--soft);padding:14px 56px 14px 16px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;justify-content:space-between;position:relative;cursor:pointer}
 .chev{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:36px;height:36px;padding:0;display:grid;place-items:center;border-radius:99px;background:var(--surface)}
 .chev svg{transition:transform .2s}
-.plan.closed .chev svg{transform:rotate(-90deg)}
+.plan.closed .chev svg,.card.closed .chev svg{transform:rotate(-90deg)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
+.card-head .chev{position:static;transform:none;flex:none;background:var(--soft)}
+.card-body{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card.closed .card-body{display:none}
 .plan.closed .meal{display:none}
 .plan-head .no{font-family:var(--display);font-weight:700;font-size:1.2rem}
 .plan-head .freq{font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
@@ -626,6 +630,12 @@ function mealHTML(label,rec,ing,days,isDinner,pi,k){
     '<button class="small" data-pref="'+rec.id+':-1" aria-pressed="'+(pv===-1)+'" aria-label="Sevmedik" title="Sevmedik: bir daha önerilmesin">👎</button></span></div>';
   return h+'</div>';
 }
+/* Açılır/kapanır kart: başlık (ok ile) + gövde; kapalı durum cihazda hatırlanır (closed listesinde anahtar). */
+const CHEV='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+function foldCard(id,title,body){
+  const el=$(id),op=!closed.includes(id);el.classList.toggle('closed',!op);
+  el.innerHTML='<div class="card-head"><h2>'+title+'</h2><button class="chev" aria-expanded="'+op+'" aria-label="'+title+' göster/gizle">'+CHEV+'</button></div><div class="card-body">'+body+'</div>';
+}
 const ARR=d=>'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+d+'"/></svg>';
 function render(){
   const w=hist[cur];
@@ -656,7 +666,7 @@ function render(){
   $('menu').innerHTML=h;
   // günlük tablo
   const rows={s:[],r:[]};plans.forEach(p=>p.days.forEach(d=>{rows.s[d]=p.tot.s;rows.r[d]=p.tot.r}));
-  let warn=0,nh='<h2>Günlük besin değerleri</h2>';
+  let warn=0,nh='';
   ['s','r'].forEach(k=>{const t=T[k],av=[0,0,0,0,0];
     nh+='<div><h3 class="'+(k==='s'?'cs':'cr')+'">'+t.name.toUpperCase()+'</h3><div class="tscroll"><table><thead><tr><th>Gün</th><th class="n">Kalori</th><th class="n">Protein</th><th class="n">Karb.</th><th class="n">Yağ</th><th class="n">Lif</th></tr></thead><tbody>';
     rows[k].forEach((m,d)=>{m.forEach((v,j)=>av[j]+=v/7);const wk=m[0]<t.lo-25||m[0]>t.hi+25,wp=m[1]<t.pmin-3;if(wk||wp)warn++;
@@ -665,8 +675,8 @@ function render(){
   const prev=hist[cur-1],rep=prev?w.plans.filter(p=>prev.plans.some(q=>q.d===p.d)).length:0;
   const qc=[['7 gün',plans.reduce((a,p)=>a+p.days.length,0)===7],['4 akşam pişirmesi',true],['Aynı yemek, farklı porsiyon',true],['Kalori ve protein hedefte',warn===0],['Geçen haftanın akşamı tekrar etmiyor',rep===0]];
   nh+='<div class="qc">'+qc.map(q=>'<span class="'+(q[1]?'':'bad')+'">'+(q[1]?'✓ ':'! ')+q[0]+'</span>').join('')+'</div><p class="note">Değerler, yazılı gramajlardan yaklaşık besin değerleriyle hesaplanır (karbonhidrat net, lif ayrı). Renkli hücre hedef dışı günü gösterir. Et, tahıl ve bakliyat gramajları aksi yazmadıkça çiğ/kuru ağırlıktır; konserve bakliyat süzülmüş (pişmiş) ağırlıktır.</p>';
-  $('nutri').innerHTML=nh;
-  $('flex').innerHTML='<h2>Kontrollü esnek öğün</h2><p class="note">Haftada en fazla 1 akşam yemeği, tercihen Pazar akşamının yerine. O gün kahvaltı ve ara öğün aynen uygulanır. Hedef: Samet için yaklaşık 700–800 kcal, Raşe için 550–650 kcal.</p><ul class="note"><li>İnce hamur pizza: Samet 3 dilim, Raşe 2 dilim + büyük yeşil salata</li><li>Suşi (tempurasız): Samet 10–12 parça, Raşe 8 parça + edamame</li><li>Ekmeğin yarısıyla burger + patates yerine salata</li><li>Türk restoranı: tavuk şiş / ızgara köfte + salata; pilavdan 3–4 YK, lavaş yok</li></ul><p class="note">Takviyeler ve su: D vitamini ve omega-3 kahvaltıyla, magnezyum yatmadan önce; günde 2,5–3 L su.</p>';
+  foldCard('nutri','Günlük besin değerleri',nh);
+  foldCard('flex','Kontrollü esnek öğün','<p class="note">Haftada en fazla 1 akşam yemeği, tercihen Pazar akşamının yerine. O gün kahvaltı ve ara öğün aynen uygulanır. Hedef: Samet için yaklaşık 700–800 kcal, Raşe için 550–650 kcal.</p><ul class="note"><li>İnce hamur pizza: Samet 3 dilim, Raşe 2 dilim + büyük yeşil salata</li><li>Suşi (tempurasız): Samet 10–12 parça, Raşe 8 parça + edamame</li><li>Ekmeğin yarısıyla burger + patates yerine salata</li><li>Türk restoranı: tavuk şiş / ızgara köfte + salata; pilavdan 3–4 YK, lavaş yok</li></ul><p class="note">Takviyeler ve su: D vitamini ve omega-3 kahvaltıyla, magnezyum yatmadan önce; günde 2,5–3 L su.</p>');
   renderShop(w,plans);
   renderPrefs();
 }
@@ -696,7 +706,10 @@ function arm(k){confirmKey=k;render();clearTimeout(arm.t);arm.t=setTimeout(()=>{
 function go(i){cur=i;day=defDay();confirmKey=null;render()}
 $('btnShop').onclick=()=>{shopOpen=true;render();$('shop').scrollIntoView({behavior:'smooth',block:'start'})};
 document.addEventListener('click',e=>{
-  const t=e.target,head=t.closest&&t.closest('.plan-head');
+  const t=e.target,head=t.closest&&t.closest('.plan-head'),chead=t.closest&&t.closest('.card-head');
+  if(chead){const c=chead.parentNode,k=c.id,x=c.classList.toggle('closed');
+    chead.querySelector('.chev').setAttribute('aria-expanded',!x);
+    closed=x?[...closed,k]:closed.filter(v=>v!==k);lsSet('beslenme-closed',closed);return}
   if(head){const a=head.parentNode,i=+a.dataset.plan,c=a.classList.toggle('closed');
     head.querySelector('.chev').setAttribute('aria-expanded',!c);
     closed=c?[...closed,i]:closed.filter(x=>x!==i);lsSet('beslenme-closed',closed);return}
