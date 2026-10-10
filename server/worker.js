@@ -13,6 +13,9 @@ const DONE = /^[a-z0-9_]{1,32}$/; // week.done: market listesinde alınan kaleml
 /* week.qty: market listesinde elle düzeltilen miktarlar, ör. {tavuk: "1 kg", yumurta: "2 paket"} (serbest metin, en fazla 40 karakter) */
 const validQty = q => q && typeof q === 'object' && !Array.isArray(q) && Object.keys(q).length <= 150 &&
   Object.entries(q).every(([k, v]) => DONE.test(k) && typeof v === 'string' && v.length > 0 && v.length <= 40);
+/* week.extra: market listesine elle eklenen ürünler, ör. [{k: "u_abc123", n: "Kahve"}] (miktarı week.qty'de) */
+const validExtra = a => Array.isArray(a) && a.length <= 60 &&
+  a.every(x => x && typeof x === 'object' && /^u_[a-z0-9]{1,16}$/.test(x.k) && typeof x.n === 'string' && x.n.length > 0 && x.n.length <= 60);
 /* plan.days: kullanıcının atadığı günler (0 = Pazartesi). Yoksa varsayılan 2+2+2+1.
    Varsa: her BESLENME 1–3 gün ve haftanın 7 günü tam bir kez dağıtılmış olmalı. */
 const SLOTS = [[0, 1], [2, 3], [4, 5], [6]];
@@ -73,7 +76,8 @@ function validState(s) {
     w.plans.every(p => p && ID.test(p.b) && ID.test(p.s) && ID.test(p.d) && (p.g === undefined || GRAIN.test(p.g)) && (p.x === undefined || validX(p.x))) &&
     validDays(w.plans) &&
     (w.done === undefined || Array.isArray(w.done) && w.done.length <= 150 && w.done.every(k => typeof k === 'string' && DONE.test(k))) &&
-    (w.qty === undefined || validQty(w.qty)));
+    (w.qty === undefined || validQty(w.qty)) &&
+    (w.extra === undefined || validExtra(w.extra)));
   const customOk = s.custom.every(r => r && typeof r === 'object' && ID.test(r.id));
   const pr = s.prefs;
   const prefsOk = pr && typeof pr === 'object' && !Array.isArray(pr) && Object.keys(pr).length <= 300 &&
