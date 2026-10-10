@@ -45,7 +45,7 @@ html{color-scheme:light dark}
   .plan.off{display:block!important}
   tr.sel td{background:none;font-weight:inherit}
   .plan.closed .meal,.card.closed .card-body{display:flex!important}
-  button.rm,tr.gone,.dayed{display:none!important}
+  button.rm,tr.gone,.dayed,button.qed,.shopprog{display:none!important}
   .plan-head{padding-right:16px}
   #shop,#nutri{break-before:page}
   @page{size:A4;margin:14mm}
@@ -118,6 +118,8 @@ button.rm{width:22px;height:22px;padding:0;margin:0 6px 0 -4px;border-radius:99p
 button.rm:hover{color:var(--warn);border-color:var(--warn)}
 tr.gone td{color:var(--muted)}
 .shopprog{margin:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.shop li{display:flex;align-items:flex-start;gap:8px}.shop li label{flex:1;min-width:0}
+button.qed{flex:none;width:32px;height:32px;padding:0;border-radius:99px;color:var(--muted)}
 .dayed{border-color:var(--accent)}
 .dgrid{width:auto}.dgrid th,.dgrid td{padding:3px;text-align:center;border:0}
 .dgrid tbody th{font-family:var(--display);color:var(--ink);padding-right:8px}
@@ -579,7 +581,7 @@ function shopping(plans){
 }
 function shopText(w,plans){
   const sh=shopping(plans);let t=(w.start?rangeLabel(w.start).toLocaleUpperCase('tr-TR'):'HAFTA '+w.no)+' – MARKET LİSTESİ (Samet + Raşe, 7 gün)\n';
-  SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';sh[k].forEach(x=>t+=((w.done||[]).includes(x.k)?'☑ ':'☐ ')+x.n+' — '+x.buy+(x.need?' (gerekli: '+x.need+')':'')+'\n')});
+  SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';sh[k].forEach(x=>{const q=(w.qty||{})[x.k];t+=((w.done||[]).includes(x.k)?'☑ ':'☐ ')+x.n+' — '+(q||x.buy+(x.need?' (gerekli: '+x.need+')':''))+'\n'})});
   return t;
 }
 if(typeof module!=='undefined')module.exports={validRecipe,validDays,daysOf,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
@@ -592,7 +594,8 @@ const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let hist=[],cur=0,shopOpen=false,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
-const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x)))&&validPlanDays(w)&&validDone(w));
+const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x)))&&validPlanDays(w)&&validDone(w)&&validQty(w));
+const validQty=w=>w.qty===undefined||w.qty&&typeof w.qty==='object'&&!Array.isArray(w.qty)&&Object.keys(w.qty).length<=150&&Object.entries(w.qty).every(([k,v])=>/^[a-z0-9_]{1,32}$/.test(k)&&typeof v==='string'&&v.length>0&&v.length<=40);
 const validDone=w=>w.done===undefined||Array.isArray(w.done)&&w.done.length<=150&&w.done.every(k=>typeof k==='string'&&/^[a-z0-9_]{1,32}$/.test(k));
 const validPlanDays=w=>!w.plans.some(p=>p.days!==undefined)||validDays(w.plans);
 const validX=x=>x&&typeof x==='object'&&Object.entries(x).every(([k,a])=>['b','s','d'].includes(k)&&Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=0&&n<30));
@@ -606,8 +609,11 @@ function save(){seq++;dirty=true;otherDirty=true;saveLocal();push()}
 /* Market işaretleri iki telefondan aynı anda değişebilir: her işaret bir işlem olarak tutulur ve
    sunucuda daha yeni bir sürüm varsa onun üzerine yeniden uygulanır (kimsenin işareti kaybolmaz). */
 let pendingOps=[],otherDirty=false,seq=0; // seq: her değişiklikte artar; gönderim sırasında yeni değişiklik olduysa kirli kalır
-function applyOp(o){const w=hist.find(x=>x.start===o.start);if(!w)return;const a=new Set(w.done||[]);o.on?a.add(o.k):a.delete(o.k);if(a.size)w.done=[...a];else delete w.done}
-function check(k,on){const o={start:hist[cur].start,k,on};pendingOps.push(o);applyOp(o);seq++;dirty=true;saveLocal();render();push()}
+function applyOp(o){const w=hist.find(x=>x.start===o.start);if(!w)return;
+  if(o.t==='qty'){const q={...(w.qty||{})};if(o.v)q[o.k]=o.v;else delete q[o.k];if(Object.keys(q).length)w.qty=q;else delete w.qty;return} // elle yazılan miktar ('' = hesaplanana dön)
+  const a=new Set(w.done||[]);o.on?a.add(o.k):a.delete(o.k);if(a.size)w.done=[...a];else delete w.done}
+function doOp(o){o.start=hist[cur].start;pendingOps.push(o);applyOp(o);seq++;dirty=true;saveLocal();render();push()}
+const check=(k,on)=>doOp({k,on});
 const SYNC={init:['Eşitleniyor…',0],ok:['☁︎ Bulutla eşitlendi',0],nopin:['Salt okunur: kaydetmek için PIN girin',1],badpin:['PIN hatalı',1],off:['Çevrimdışı: bu cihazdaki kopya',1]};
 function syncSpan(){const s=SYNC[sync];return '<span id="sync" class="sync'+(s[1]?' bad':'')+'">'+s[0]+'</span>'}
 function syncHTML(){return syncSpan()+'<button class="small" id="pin">'+(pin?'PIN değiştir':'PIN gir')+'</button>'}
@@ -744,10 +750,14 @@ function renderPrefs(){
 function renderShop(w,plans){
   const el=$('shop');el.hidden=!shopOpen;if(!shopOpen)return;
   const sh=shopping(plans),all=Object.values(sh).flat(),nd=all.filter(x=>(w.done||[]).includes(x.k)).length;
-  let h='<h2>'+rangeLabel(w.start)+' – Market alışveriş listesi</h2><p class="note">Samet + Raşe toplamı, 7 gün. Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır. İşaretlediğiniz kalemler iki telefonda da görünür.</p>'+
+  let h='<h2>'+rangeLabel(w.start)+' – Market alışveriş listesi</h2><p class="note">Samet + Raşe toplamı, 7 gün. Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır. İşaretlediğiniz kalemler ve ✎ ile düzelttiğiniz miktarlar iki telefonda da görünür.</p>'+
     '<p class="shopprog"><b>'+nd+' / '+all.length+'</b> alındı'+(nd?' <button class="small" id="ckclear">İşaretleri temizle</button>':'')+'</p>';
   const done=w.done||[];
-  SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+sh[k].map(x=>'<li><label><input type="checkbox" data-ck="'+x.k+'"'+(done.includes(x.k)?' checked':'')+'><span>'+esc(x.n)+' — <b>'+x.buy+'</b>'+(x.need?' <small>(gerekli: '+x.need+')</small>':'')+'</span></label></li>').join('')+'</ul>'});
+  const qty=w.qty||{};
+  SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+sh[k].map(x=>{const q=qty[x.k];
+    return '<li><label><input type="checkbox" data-ck="'+x.k+'"'+(done.includes(x.k)?' checked':'')+'><span>'+esc(x.n)+' — <b>'+esc(q||x.buy)+'</b>'+
+      (q?' <small>(elle düzeltildi; hesaplanan: '+x.buy+')</small>':x.need?' <small>(gerekli: '+x.need+')</small>':'')+'</span></label>'+
+      '<button class="small qed" data-qty="'+x.k+'" data-cur="'+esc(q||x.buy).replace(/"/g,'&quot;')+'" aria-label="'+esc(x.n).replace(/"/g,'&quot;')+' miktarını düzelt" title="Miktarı düzelt">✎</button></li>'}).join('')+'</ul>'});
   h+='<div><button id="copy">Listeyi kopyala (Apple Notes)</button></div><textarea id="shoptxt" readonly aria-label="Kopyalanabilir alışveriş listesi"></textarea>';
   el.innerHTML=h;$('shoptxt').value=shopText(w,plans);
 }
@@ -815,6 +825,8 @@ document.addEventListener('click',e=>{
     if(!x[k].length)delete x[k];if(!Object.keys(x).length)delete p.x;
     save();render()}
   else if(t.dataset&&t.dataset.ck!==undefined)check(t.dataset.ck,t.checked);
+  else if(t.dataset&&t.dataset.qty){const v=prompt('Alınacak miktar (ör. 2 paket, 1 kg). Boş bırakırsanız hesaplanan miktara döner:',t.dataset.cur);
+    if(v!==null){const q=v.trim().slice(0,40);doOp({t:'qty',k:t.dataset.qty,v:q});toast(q?'Miktar düzeltildi: '+q:'Hesaplanan miktara dönüldü')}}
   else if(t.id==='ckclear'){const w=hist[cur];(w.done||[]).slice().forEach(k=>check(k,false));toast('İşaretler temizlendi')}
   else if(t.id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
   else if(t.id==='copy'){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')})}
