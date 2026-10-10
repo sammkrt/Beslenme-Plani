@@ -850,7 +850,8 @@ document.addEventListener('click',e=>{
   else if(t.dataset&&t.dataset.del){const x=(hist[cur].extra||[]).find(e=>e.k===t.dataset.del);doOp({t:'del',k:t.dataset.del});if(x)toast(x.n+' listeden silindi')}
   else if(t.dataset&&t.dataset.qty){const v=prompt('Alınacak miktar (ör. 2 paket, 1 kg). Boş bırakırsanız hesaplanan miktara döner:',t.dataset.cur);
     if(v!==null){const q=v.trim().slice(0,40);doOp({t:'qty',k:t.dataset.qty,v:q});toast(q?'Miktar düzeltildi: '+q:'Hesaplanan miktara dönüldü')}}
-  else if(t.id==='ckclear'){const w=hist[cur];(w.done||[]).slice().forEach(k=>check(k,false));toast('İşaretler temizlendi')}
+  else if(t.id==='ckclear'){const w=hist[cur],n=(w.done||[]).length;
+    if(n&&confirm('Emin misiniz? '+n+' kalemin işareti kaldırılacak. Bu, iki telefonda da geçerli olur.')){w.done.slice().forEach(k=>check(k,false));toast('İşaretler temizlendi')}}
   else if(t.id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
   else if(t.id==='copy'){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')})}
 });
