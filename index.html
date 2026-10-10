@@ -579,12 +579,14 @@ function shopping(plans){
   if(sp.size)out.sos.push({k:'x_baharat',n:'Baharat (evde yoksa): '+[...sp].sort((a,b)=>a.localeCompare(b,'tr')).join(', '),buy:'küçük paket'});
   return out;
 }
+/* Bir kategorideki kalemleri sıralar: alınmamışlar önce, alınanlar (üstü çizili) sonda; kendi içlerinde sıra korunur. */
+const doneLast=(items,done)=>[...items.filter(x=>!done.includes(x.k)),...items.filter(x=>done.includes(x.k))];
 function shopText(w,plans){
   const sh=shopping(plans);let t=(w.start?rangeLabel(w.start).toLocaleUpperCase('tr-TR'):'HAFTA '+w.no)+' – MARKET LİSTESİ (Samet + Raşe, 7 gün)\n';
-  SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';sh[k].forEach(x=>{const q=(w.qty||{})[x.k];t+=((w.done||[]).includes(x.k)?'☑ ':'☐ ')+x.n+' — '+(q||x.buy+(x.need?' (gerekli: '+x.need+')':''))+'\n'})});
+  SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';doneLast(sh[k],w.done||[]).forEach(x=>{const q=(w.qty||{})[x.k];t+=((w.done||[]).includes(x.k)?'☑ ':'☐ ')+x.n+' — '+(q||x.buy+(x.need?' (gerekli: '+x.need+')':''))+'\n'})});
   return t;
 }
-if(typeof module!=='undefined')module.exports={validRecipe,validDays,daysOf,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
+if(typeof module!=='undefined')module.exports={doneLast,validRecipe,validDays,daysOf,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
 
 /* ===== ARAYÜZ ===== */
 if(typeof document!=='undefined'){
@@ -593,7 +595,7 @@ const $=id=>document.getElementById(id),esc=s=>String(s).replace(/&/g,'&amp;').r
 const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost:8787':'https://beslenme-api.samet-krt.workers.dev';
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-let hist=[],cur=0,shopOpen=false,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
+let hist=[],cur=0,shopOpen=lsGet('beslenme-shop',false)===true,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
 const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x)))&&validPlanDays(w)&&validDone(w)&&validQty(w));
 const validQty=w=>w.qty===undefined||w.qty&&typeof w.qty==='object'&&!Array.isArray(w.qty)&&Object.keys(w.qty).length<=150&&Object.entries(w.qty).every(([k,v])=>/^[a-z0-9_]{1,32}$/.test(k)&&typeof v==='string'&&v.length>0&&v.length<=40);
 const validDone=w=>w.done===undefined||Array.isArray(w.done)&&w.done.length<=150&&w.done.every(k=>typeof k==='string'&&/^[a-z0-9_]{1,32}$/.test(k));
@@ -748,13 +750,13 @@ function renderPrefs(){
     (up?'<h3>👍 Sevdikleriniz</h3><ul class="plist">'+up+'</ul>':'')+(down?'<h3>👎 Sevmedikleriniz</h3><ul class="plist">'+down+'</ul>':'');
 }
 function renderShop(w,plans){
-  const el=$('shop');el.hidden=!shopOpen;if(!shopOpen)return;
+  const el=$('shop');el.hidden=!shopOpen;$('btnShop').textContent=shopOpen?'Market Listesine Git':'Market Alışveriş Listesi Oluştur';if(!shopOpen)return;
   const sh=shopping(plans),all=Object.values(sh).flat(),nd=all.filter(x=>(w.done||[]).includes(x.k)).length;
   let h='<h2>'+rangeLabel(w.start)+' – Market alışveriş listesi</h2><p class="note">Samet + Raşe toplamı, 7 gün. Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır. İşaretlediğiniz kalemler ve ✎ ile düzelttiğiniz miktarlar iki telefonda da görünür.</p>'+
     '<p class="shopprog"><b>'+nd+' / '+all.length+'</b> alındı'+(nd?' <button class="small" id="ckclear">İşaretleri temizle</button>':'')+'</p>';
   const done=w.done||[];
   const qty=w.qty||{};
-  SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+sh[k].map(x=>{const q=qty[x.k];
+  SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+doneLast(sh[k],done).map(x=>{const q=qty[x.k];
     return '<li><label><input type="checkbox" data-ck="'+x.k+'"'+(done.includes(x.k)?' checked':'')+'><span>'+esc(x.n)+' — <b>'+esc(q||x.buy)+'</b>'+
       (q?' <small>(elle düzeltildi; hesaplanan: '+x.buy+')</small>':x.need?' <small>(gerekli: '+x.need+')</small>':'')+'</span></label>'+
       '<button class="small qed" data-qty="'+x.k+'" data-cur="'+esc(q||x.buy).replace(/"/g,'&quot;')+'" aria-label="'+esc(x.n).replace(/"/g,'&quot;')+' miktarını düzelt" title="Miktarı düzelt">✎</button></li>'}).join('')+'</ul>'});
@@ -782,7 +784,7 @@ function dayEditor(){
     return '<li><b>BESLENME '+(i+1)+':</b> '+dayText(a)+' ('+a.length+' gün)'+(a.length>1&&sp>3?' <span class="warnt">⚠ ilk ve son gün arası '+sp+' gün: pişmiş yemek 3 günden fazla beklemesin, gerekirse dondurun</span>':'')+'</li>'}).join('')+'</ul>';
   return h+'<div class="wact" style="justify-content:flex-start;margin:0"><button class="small primary" id="dsave">Kaydet</button><button class="small" id="dcancel">Vazgeç</button></div></section>';
 }
-$('btnShop').onclick=()=>{shopOpen=true;render();$('shop').scrollIntoView({behavior:'smooth',block:'start'});if(!dirty){lastPoll=Date.now();pull()}}; // diğer telefonun işaretlerini hemen al
+$('btnShop').onclick=()=>{shopOpen=true;lsSet('beslenme-shop',true);render();$('shop').scrollIntoView({behavior:'smooth',block:'start'});if(!dirty){lastPoll=Date.now();pull()}}; // diğer telefonun işaretlerini hemen al
 document.addEventListener('click',e=>{
   const t=e.target,head=t.closest&&t.closest('.plan-head'),chead=t.closest&&t.closest('.card-head');
   if(chead){const c=chead.parentNode,k=c.id,x=c.classList.toggle('closed');
@@ -848,7 +850,8 @@ pull().then(()=>{if(!hist.length&&!ver){hist.push(generate([]));cur=0;day=defDay
 addEventListener('online',()=>{if(dirty)push()});
 /* Diğer telefondaki değişiklikleri getir: market listesi açıkken 5 sn'de, değilse 60 sn'de bir; sekme görünürken. */
 let lastPoll=Date.now();
-setInterval(()=>{if(document.hidden||dirty||!shopOpen&&Date.now()-lastPoll<60000)return;lastPoll=Date.now();pull()},5000);
+const shopInView=()=>{if(!shopOpen)return false;const r=$('shop').getBoundingClientRect();return r.bottom>0&&r.top<innerHeight};
+setInterval(()=>{if(document.hidden||dirty||!shopInView()&&Date.now()-lastPoll<60000)return;lastPoll=Date.now();pull()},5000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!dirty){lastPoll=Date.now();pull()}});
 /* Aşağı çekip yenile: tarayıcılar bunu kendisi yapar, yalnızca ana ekran uygulamasında (standalone) etkin. */
 if(navigator.standalone===true||matchMedia('(display-mode: standalone)').matches){
