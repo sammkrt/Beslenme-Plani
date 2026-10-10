@@ -45,7 +45,7 @@ html{color-scheme:light dark}
   .plan.off{display:block!important}
   tr.sel td{background:none;font-weight:inherit}
   .plan.closed .meal,.card.closed .card-body{display:flex!important}
-  button.rm,tr.gone,.dayed,button.qed,.shopprog{display:none!important}
+  button.rm,tr.gone,.dayed,button.qed,.shopprog,.addrow{display:none!important}
   .plan-head{padding-right:16px}
   #shop,#nutri{break-before:page}
   @page{size:A4;margin:14mm}
@@ -146,7 +146,11 @@ td.warn{background:var(--warn-bg);color:var(--warn);font-weight:700}
 .shop ul{list-style:none;margin:0;padding:0}
 .shop li{padding:5px 0;border-bottom:1px solid var(--line)}
 .shop label{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
-.shop input{margin-top:4px;accent-color:var(--accent)}
+.shop input[type=checkbox]{margin-top:4px;accent-color:var(--accent)}
+.addrow{display:flex;gap:6px;align-items:stretch}
+.addrow input{font:16px var(--body);min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.addrow #addn{flex:2}.addrow #addq{flex:1}
+.addrow input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .shop small{color:var(--muted)}
 .shop input:checked + span{text-decoration:line-through;color:var(--muted)}
 textarea{width:100%;min-height:160px;font:13px/1.5 ui-monospace,Menlo,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
@@ -583,6 +587,7 @@ function shopping(plans){
 const doneLast=(items,done)=>[...items.filter(x=>!done.includes(x.k)),...items.filter(x=>done.includes(x.k))];
 function shopText(w,plans){
   const sh=shopping(plans);let t=(w.start?rangeLabel(w.start).toLocaleUpperCase('tr-TR'):'HAFTA '+w.no)+' – MARKET LİSTESİ (Samet + Raşe, 7 gün)\n';
+  if((w.extra||[]).length){t+='\n🧺 EKLEDİKLERİMİZ\n\n';doneLast(w.extra,w.done||[]).forEach(x=>{const q=(w.qty||{})[x.k];t+=((w.done||[]).includes(x.k)?'☑ ':'☐ ')+x.n+(q?' — '+q:'')+'\n'})}
   SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';doneLast(sh[k],w.done||[]).forEach(x=>{const q=(w.qty||{})[x.k];t+=((w.done||[]).includes(x.k)?'☑ ':'☐ ')+x.n+' — '+(q||x.buy+(x.need?' (gerekli: '+x.need+')':''))+'\n'})});
   return t;
 }
@@ -596,7 +601,8 @@ const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let hist=[],cur=0,shopOpen=lsGet('beslenme-shop',false)===true,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
-const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x)))&&validPlanDays(w)&&validDone(w)&&validQty(w));
+const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x)))&&validPlanDays(w)&&validDone(w)&&validQty(w)&&validExtra(w));
+const validExtra=w=>w.extra===undefined||Array.isArray(w.extra)&&w.extra.length<=60&&w.extra.every(x=>x&&/^u_[a-z0-9]{1,16}$/.test(x.k)&&typeof x.n==='string'&&x.n.length>0&&x.n.length<=60);
 const validQty=w=>w.qty===undefined||w.qty&&typeof w.qty==='object'&&!Array.isArray(w.qty)&&Object.keys(w.qty).length<=150&&Object.entries(w.qty).every(([k,v])=>/^[a-z0-9_]{1,32}$/.test(k)&&typeof v==='string'&&v.length>0&&v.length<=40);
 const validDone=w=>w.done===undefined||Array.isArray(w.done)&&w.done.length<=150&&w.done.every(k=>typeof k==='string'&&/^[a-z0-9_]{1,32}$/.test(k));
 const validPlanDays=w=>!w.plans.some(p=>p.days!==undefined)||validDays(w.plans);
@@ -612,6 +618,10 @@ function save(){seq++;dirty=true;otherDirty=true;saveLocal();push()}
    sunucuda daha yeni bir sürüm varsa onun üzerine yeniden uygulanır (kimsenin işareti kaybolmaz). */
 let pendingOps=[],otherDirty=false,seq=0; // seq: her değişiklikte artar; gönderim sırasında yeni değişiklik olduysa kirli kalır
 function applyOp(o){const w=hist.find(x=>x.start===o.start);if(!w)return;
+  if(o.t==='add'){if(!(w.extra||[]).some(x=>x.k===o.k))w.extra=[...(w.extra||[]),{k:o.k,n:o.n}];if(o.q)w.qty={...(w.qty||{}),[o.k]:o.q};return}
+  if(o.t==='del'){w.extra=(w.extra||[]).filter(x=>x.k!==o.k);if(!w.extra.length)delete w.extra;
+    if(w.qty){delete w.qty[o.k];if(!Object.keys(w.qty).length)delete w.qty}
+    if(w.done){w.done=w.done.filter(k=>k!==o.k);if(!w.done.length)delete w.done}return}
   if(o.t==='qty'){const q={...(w.qty||{})};if(o.v)q[o.k]=o.v;else delete q[o.k];if(Object.keys(q).length)w.qty=q;else delete w.qty;return} // elle yazılan miktar ('' = hesaplanana dön)
   const a=new Set(w.done||[]);o.on?a.add(o.k):a.delete(o.k);if(a.size)w.done=[...a];else delete w.done}
 function doOp(o){o.start=hist[cur].start;pendingOps.push(o);applyOp(o);seq++;dirty=true;saveLocal();render();push()}
@@ -746,22 +756,31 @@ function renderPrefs(){
   const ids=Object.keys(PREFS).filter(id=>ALL[id]),el=$('prefs');el.hidden=!ids.length;if(!ids.length)return;
   const li=v=>ids.filter(id=>PREFS[id]===v).map(id=>'<li>'+esc(ALL[id].name)+' <button class="small" data-unpref="'+id+'">Kaldır</button></li>').join('');
   const up=li(1),down=li(-1);
-  el.innerHTML='<h2>Tercihleriniz</h2><p class="note">İkinizin ortak tercihi. Sevdikleriniz daha sık gelir; sevmedikleriniz yeni haftalara konmaz.</p>'+
-    (up?'<h3>👍 Sevdikleriniz</h3><ul class="plist">'+up+'</ul>':'')+(down?'<h3>👎 Sevmedikleriniz</h3><ul class="plist">'+down+'</ul>':'');
+  foldCard('prefs','Tercihleriniz','<p class="note">İkinizin ortak tercihi. Sevdikleriniz daha sık gelir; sevmedikleriniz yeni haftalara konmaz.</p>'+
+    (up?'<h3>👍 Sevdikleriniz</h3><ul class="plist">'+up+'</ul>':'')+(down?'<h3>👎 Sevmedikleriniz</h3><ul class="plist">'+down+'</ul>':''));
 }
+const EXL='🧺 EKLEDİKLERİMİZ'; // kullanıcının eklediği ürünler (week.extra)
+const q2=t=>esc(t).replace(/"/g,'&quot;');
+let addDraft={n:'',q:''}; // "Ürün ekle" alanında yazılmakta olan metin (arka plan eşitlemesi listeyi yeniden çizerken kaybolmasın)
 function renderShop(w,plans){
   const el=$('shop');el.hidden=!shopOpen;$('btnShop').textContent=shopOpen?'Market Listesine Git':'Market Alışveriş Listesi Oluştur';if(!shopOpen)return;
-  const sh=shopping(plans),all=Object.values(sh).flat(),nd=all.filter(x=>(w.done||[]).includes(x.k)).length;
-  let h='<h2>'+rangeLabel(w.start)+' – Market alışveriş listesi</h2><p class="note">Samet + Raşe toplamı, 7 gün. Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır. İşaretlediğiniz kalemler ve ✎ ile düzelttiğiniz miktarlar iki telefonda da görünür.</p>'+
-    '<p class="shopprog"><b>'+nd+' / '+all.length+'</b> alındı'+(nd?' <button class="small" id="ckclear">İşaretleri temizle</button>':'')+'</p>';
-  const done=w.done||[];
-  const qty=w.qty||{};
-  SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+doneLast(sh[k],done).map(x=>{const q=qty[x.k];
-    return '<li><label><input type="checkbox" data-ck="'+x.k+'"'+(done.includes(x.k)?' checked':'')+'><span>'+esc(x.n)+' — <b>'+esc(q||x.buy)+'</b>'+
-      (q?' <small>(elle düzeltildi; hesaplanan: '+x.buy+')</small>':x.need?' <small>(gerekli: '+x.need+')</small>':'')+'</span></label>'+
-      '<button class="small qed" data-qty="'+x.k+'" data-cur="'+esc(q||x.buy).replace(/"/g,'&quot;')+'" aria-label="'+esc(x.n).replace(/"/g,'&quot;')+' miktarını düzelt" title="Miktarı düzelt">✎</button></li>'}).join('')+'</ul>'});
+  const sh=shopping(plans),done=w.done||[],qty=w.qty||{},extra=w.extra||[];
+  const all=[...Object.values(sh).flat(),...extra],nd=all.filter(x=>done.includes(x.k)).length;
+  const focus=document.activeElement&&document.activeElement.id;
+  let h='<p class="note">Samet + Raşe toplamı, 7 gün. Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır. İşaretler, ✎ ile düzelttiğiniz miktarlar ve eklediğiniz ürünler iki telefonda da görünür.</p>'+
+    '<p class="shopprog"><b>'+nd+' / '+all.length+'</b> alındı'+(nd?' <button class="small" id="ckclear">İşaretleri temizle</button>':'')+'</p>'+
+    '<form class="addrow" id="addform"><input id="addn" type="text" placeholder="Ürün ekle (ör. kahve)" maxlength="60" autocomplete="off" aria-label="Eklenecek ürün" value="'+q2(addDraft.n)+'">'+
+    '<input id="addq" type="text" placeholder="Miktar" maxlength="40" autocomplete="off" aria-label="Miktar (isteğe bağlı)" value="'+q2(addDraft.q)+'"><button class="small primary" type="submit">Ekle</button></form>';
+  const row=(x,own)=>{const q=qty[x.k],buy=q||x.buy||'';
+    return '<li><label><input type="checkbox" data-ck="'+x.k+'"'+(done.includes(x.k)?' checked':'')+'><span>'+esc(x.n)+(buy?' — <b>'+esc(buy)+'</b>':'')+
+      (own?'':q?' <small>(elle düzeltildi; hesaplanan: '+x.buy+')</small>':x.need?' <small>(gerekli: '+x.need+')</small>':'')+'</span></label>'+
+      '<button class="small qed" data-qty="'+x.k+'" data-cur="'+q2(buy)+'" aria-label="'+q2(x.n)+' miktarını düzelt" title="Miktarı düzelt">✎</button>'+
+      (own?'<button class="small qed" data-del="'+x.k+'" aria-label="'+q2(x.n)+' listeden sil" title="Listeden sil">✕</button>':'')+'</li>'};
+  if(extra.length)h+='<h4>'+EXL+'</h4><ul>'+doneLast(extra,done).map(x=>row(x,true)).join('')+'</ul>';
+  SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+doneLast(sh[k],done).map(x=>row(x,false)).join('')+'</ul>'});
   h+='<div><button id="copy">Listeyi kopyala (Apple Notes)</button></div><textarea id="shoptxt" readonly aria-label="Kopyalanabilir alışveriş listesi"></textarea>';
-  el.innerHTML=h;$('shoptxt').value=shopText(w,plans);
+  foldCard('shop',rangeLabel(w.start)+' – Market alışveriş listesi',h);$('shoptxt').value=shopText(w,plans);
+  if(focus==='addn'||focus==='addq'){const e=$(focus);e.focus();e.setSelectionRange(e.value.length,e.value.length)}
 }
 /* Yeni hafta: bu hafta yoksa bu hafta, varsa gelecek hafta hazırlanır; en fazla 1 hafta ileriye. */
 $('btnNew').onclick=()=>{
@@ -784,7 +803,8 @@ function dayEditor(){
     return '<li><b>BESLENME '+(i+1)+':</b> '+dayText(a)+' ('+a.length+' gün)'+(a.length>1&&sp>3?' <span class="warnt">⚠ ilk ve son gün arası '+sp+' gün: pişmiş yemek 3 günden fazla beklemesin, gerekirse dondurun</span>':'')+'</li>'}).join('')+'</ul>';
   return h+'<div class="wact" style="justify-content:flex-start;margin:0"><button class="small primary" id="dsave">Kaydet</button><button class="small" id="dcancel">Vazgeç</button></div></section>';
 }
-$('btnShop').onclick=()=>{shopOpen=true;lsSet('beslenme-shop',true);render();$('shop').scrollIntoView({behavior:'smooth',block:'start'});if(!dirty){lastPoll=Date.now();pull()}}; // diğer telefonun işaretlerini hemen al
+$('btnShop').onclick=()=>{shopOpen=true;lsSet('beslenme-shop',true);if(closed.includes('shop')){closed=closed.filter(v=>v!=='shop');lsSet('beslenme-closed',closed)} // kart kapalıysa aç
+  render();$('shop').scrollIntoView({behavior:'smooth',block:'start'});if(!dirty){lastPoll=Date.now();pull()}}; // diğer telefonun işaretlerini hemen al
 document.addEventListener('click',e=>{
   const t=e.target,head=t.closest&&t.closest('.plan-head'),chead=t.closest&&t.closest('.card-head');
   if(chead){const c=chead.parentNode,k=c.id,x=c.classList.toggle('closed');
@@ -827,6 +847,7 @@ document.addEventListener('click',e=>{
     if(!x[k].length)delete x[k];if(!Object.keys(x).length)delete p.x;
     save();render()}
   else if(t.dataset&&t.dataset.ck!==undefined)check(t.dataset.ck,t.checked);
+  else if(t.dataset&&t.dataset.del){const x=(hist[cur].extra||[]).find(e=>e.k===t.dataset.del);doOp({t:'del',k:t.dataset.del});if(x)toast(x.n+' listeden silindi')}
   else if(t.dataset&&t.dataset.qty){const v=prompt('Alınacak miktar (ör. 2 paket, 1 kg). Boş bırakırsanız hesaplanan miktara döner:',t.dataset.cur);
     if(v!==null){const q=v.trim().slice(0,40);doOp({t:'qty',k:t.dataset.qty,v:q});toast(q?'Miktar düzeltildi: '+q:'Hesaplanan miktara dönüldü')}}
   else if(t.id==='ckclear'){const w=hist[cur];(w.done||[]).slice().forEach(k=>check(k,false));toast('İşaretler temizlendi')}
@@ -848,6 +869,12 @@ pull().then(()=>{if(!hist.length&&!ver){hist.push(generate([]));cur=0;day=defDay
   else if(!hist.length)render();
   if(wantPdf){toast('Yazdırma penceresi açılmazsa PDF Olarak İndir’e dokunun');printNow()}}); // sunucudaki güncel plan geldikten sonra yazdır
 addEventListener('online',()=>{if(dirty)push()});
+/* Market listesine ürün ekleme formu */
+document.addEventListener('input',e=>{if(e.target.id==='addn')addDraft.n=e.target.value;else if(e.target.id==='addq')addDraft.q=e.target.value});
+document.addEventListener('submit',e=>{if(e.target.id!=='addform')return;e.preventDefault();
+  const n=addDraft.n.trim().slice(0,60),q=addDraft.q.trim().slice(0,40);if(!n){$('addn').focus();return}
+  if((hist[cur].extra||[]).length>=60)return toast('Bir haftaya en fazla 60 ürün eklenebilir');
+  addDraft={n:'',q:''};doOp({t:'add',k:'u_'+Date.now().toString(36).slice(-7)+Math.random().toString(36).slice(2,5),n,q});toast(n+' listeye eklendi');$('addn').focus()});
 /* Diğer telefondaki değişiklikleri getir: market listesi açıkken 5 sn'de, değilse 60 sn'de bir; sekme görünürken. */
 let lastPoll=Date.now();
 const shopInView=()=>{if(!shopOpen)return false;const r=$('shop').getBoundingClientRect();return r.bottom>0&&r.top<innerHeight};
