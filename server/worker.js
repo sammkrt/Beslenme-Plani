@@ -70,7 +70,17 @@ async function pinOk(given, expected) {
 
 /* PIN kontrolü + kaba kuvvet sınırı (pin_fail tablosu). Başarılı girişte o IP'nin sayacı silinir.
    Dönüş: null = geçti, yoksa gönderilecek hata yanıtı. */
+/* pin_fail tablosu yoksa oluşturulur (izolat başına bir kez). Sunucu GitHub'a push edilince Cloudflare tarafından
+   kendiliğinden yayınlandığı için şema adımı elle çalıştırılmasa da kod çalışmalı. */
+let schemaReady = null;
+function ensureSchema(env) {
+  schemaReady ??= env.DB.prepare('CREATE TABLE IF NOT EXISTS pin_fail (ip TEXT PRIMARY KEY, n INTEGER NOT NULL, first TEXT NOT NULL)').run()
+    .catch(e => { schemaReady = null; throw e; });
+  return schemaReady;
+}
+
 async function guard(req, env) {
+  await ensureSchema(env);
   const ip = req.headers.get('CF-Connecting-IP') || 'unknown', now = Date.now();
   const row = await env.DB.prepare('SELECT n, first FROM pin_fail WHERE ip = ?').bind(ip).first();
   const fresh = row && now - Date.parse(row.first) < FAIL_WINDOW;

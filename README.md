@@ -29,12 +29,14 @@ npx wrangler d1 execute beslenme --remote --command "UPDATE state SET data = (SE
 
 ### Kurulum / yeniden yayın
 
+Cloudflare, `main`'e her push'ta `server/` klasöründeki Worker'ı kendiliğinden yayınlar; bu yüzden sunucu kodu, veritabanında elle bir adım beklemeden çalışmalıdır. Elle yayın için:
+
 ```bash
 cd server
 npm install
 npx wrangler login                  # Cloudflare hesabıyla giriş
 npx wrangler d1 create beslenme     # çıkan database_id'yi wrangler.toml'a yazın
-npm run db:remote                   # tabloları oluşturur (yeni tablo eklenince yeniden çalıştırın; mevcut veriye dokunmaz)
+npm run db:remote                   # tabloları oluşturur (pin_fail'ı Worker gerekirse kendisi de oluşturur)
 npx wrangler secret put PIN         # ortak PIN'i girin
 npm run deploy
 ```
