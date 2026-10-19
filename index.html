@@ -13,182 +13,250 @@
 <title>Samet &amp; Raşe Beslenme Planı</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
-/* Layout: tek sütun, üstte yapışkan eylem çubuğu; her BESLENME bir kart, öğünler kart içinde Malzeme | Samet | Raşe tablosu. */
+/* Layout: telefon öncelikli tek sütun (en fazla 640px), altta sabit sekme çubuğu: Bugün / Hafta / Market / Tercihler.
+   Tarif detayı sekmelerin üstünde açılan ayrı bir görünümdür. Yazdırma için #print ayrıca doldurulur. */
 :root{
-  --bg:#f3f5f1; --surface:#ffffff; --ink:#1d2620; --muted:#5d6b62; --line:#dbe2da;
-  --accent:#1f6b4f; --accent-ink:#ffffff; --samet:#1b5f7a; --rase:#8a2f5c;
-  --soft:#e8efe7; --warn:#b4541a; --warn-bg:#fbe9dc; --ok:#1f6b4f;
+  --bg:#f2f4ef; --surface:#ffffff; --ink:#16211b; --muted:#59675e; --faint:#8a968e; --line:#e0e6de; --line2:#edf1eb;
+  --soft:#f6f8f4; --track:#e8ede6; --shadow:0 1px 2px rgba(22,33,27,.06);
+  --accent:#1f6b4f; --accent-soft:#e2eee7; --accent-ink:#ffffff; --accent-deep:#16503b;
+  --samet:#2358a0; --samet-soft:#e6eef8; --samet-ink:#1d4c8c;
+  --rase:#b04e1c; --rase-soft:#fbede4; --rase-ink:#8f3e14;
+  --warn:#a8461a; --warn-bg:#fbe9dc;
+  --p1:#e2eee7; --p1-ink:#16503b; --p2:#e6eef8; --p2-ink:#1d4c8c; --p3:#fbede4; --p3-ink:#8f3e14; --p4:#efe8f6; --p4-ink:#5b3a8c;
+  --mb:#fdf1d8; --mb-ink:#8a5a00; --ms:#e2eee7; --ms-ink:#1f6b4f; --md:#f6e6dc; --md-ink:#8f3e14;
   --display:"Bricolage Grotesque","Avenir Next","Segoe UI",sans-serif;
   --body:"Figtree","Segoe UI",system-ui,sans-serif;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#131815; --surface:#1c231f; --ink:#e8eee9; --muted:#9aa89f; --line:#2f3a33;
-  --accent:#6fcf9f; --accent-ink:#0f1a14; --samet:#7cc4e0; --rase:#eb9cc2;
-  --soft:#242d28; --warn:#f0a36b; --warn-bg:#3a2617; --ok:#6fcf9f; color-scheme:dark } }
+  --bg:#121714; --surface:#1b221e; --ink:#e8eee9; --muted:#9aa89f; --faint:#6f7c74; --line:#2c3630; --line2:#252e29;
+  --soft:#202823; --track:#2a332e; --shadow:none;
+  --accent:#6fcf9f; --accent-soft:#1e3529; --accent-ink:#0f1a14; --accent-deep:#8fd9b3;
+  --samet:#7fb0ee; --samet-soft:#1c2a3d; --samet-ink:#a9c8f2;
+  --rase:#f0a070; --rase-soft:#3a2519; --rase-ink:#f3b993;
+  --warn:#f0a36b; --warn-bg:#3a2617;
+  --p1:#1e3529; --p1-ink:#8fd9b3; --p2:#1c2a3d; --p2-ink:#a9c8f2; --p3:#3a2519; --p3-ink:#f3b993; --p4:#2c2340; --p4-ink:#c9b3ee;
+  --mb:#3a2f17; --mb-ink:#f0cf86; --ms:#1e3529; --ms-ink:#8fd9b3; --md:#3a2519; --md-ink:#f3b993; color-scheme:dark } }
 :root[data-theme="dark"]{
-  --bg:#131815; --surface:#1c231f; --ink:#e8eee9; --muted:#9aa89f; --line:#2f3a33;
-  --accent:#6fcf9f; --accent-ink:#0f1a14; --samet:#7cc4e0; --rase:#eb9cc2;
-  --soft:#242d28; --warn:#f0a36b; --warn-bg:#3a2617; --ok:#6fcf9f; color-scheme:dark }
+  --bg:#121714; --surface:#1b221e; --ink:#e8eee9; --muted:#9aa89f; --faint:#6f7c74; --line:#2c3630; --line2:#252e29;
+  --soft:#202823; --track:#2a332e; --shadow:none;
+  --accent:#6fcf9f; --accent-soft:#1e3529; --accent-ink:#0f1a14; --accent-deep:#8fd9b3;
+  --samet:#7fb0ee; --samet-soft:#1c2a3d; --samet-ink:#a9c8f2;
+  --rase:#f0a070; --rase-soft:#3a2519; --rase-ink:#f3b993;
+  --warn:#f0a36b; --warn-bg:#3a2617;
+  --p1:#1e3529; --p1-ink:#8fd9b3; --p2:#1c2a3d; --p2-ink:#a9c8f2; --p3:#3a2519; --p3-ink:#f3b993; --p4:#2c2340; --p4-ink:#c9b3ee;
+  --mb:#3a2f17; --mb-ink:#f0cf86; --ms:#1e3529; --ms-ink:#8fd9b3; --md:#3a2519; --md-ink:#f3b993; color-scheme:dark }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{color-scheme:light dark}
-@media print{
-  :root,:root[data-theme="dark"],:root:not([data-theme="light"]){--bg:#ffffff;--surface:#ffffff;--ink:#1d2620;--muted:#5d6b62;--line:#dbe2da;--accent:#1f6b4f;--accent-ink:#ffffff;--samet:#1b5f7a;--rase:#8a2f5c;--soft:#eef3ed;--warn:#b4541a;--warn-bg:#fbe9dc;--ok:#1f6b4f;color-scheme:light}
-  .bar,.weeks,#toast,textarea,#copy,.sub,.swap,.pdfhelp,#prefs{display:none!important}
-  .wrap{max-width:none;padding:0;gap:12px}
-  body{font-size:11.5px}
-  .meal,.prep,tr,.card h2{break-inside:avoid}
-  .plan{overflow:visible}
-  .plan-head,.prep,.badge,.qc span,td.warn{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .chev,.dayf,.wact,.wnav button{display:none!important}
-  .wnav{display:block}.wnav h2{text-align:left}
-  .plan.off{display:block!important}
-  tr.sel td{background:none;font-weight:inherit}
-  .plan.closed .meal,.card.closed .card-body{display:flex!important}
-  button.rm,tr.gone,.dayed,button.qed,.shopprog,.addrow{display:none!important}
-  .plan-head{padding-right:16px}
-  #shop,#nutri{break-before:page}
-  @page{size:A4;margin:14mm}
-}
-body{margin:0;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
-.wrap{max-width:900px;margin:0 auto;padding-inline:16px;padding-block:20px 60px;display:flex;flex-direction:column;gap:20px}
-h1{font-family:var(--display);font-weight:700;font-size:clamp(1.6rem,5vw,2.3rem);line-height:1.1;margin:0;text-wrap:balance}
-h2{font-family:var(--display);font-weight:700;font-size:1.35rem;margin:0}
-h3{font-family:var(--display);font-weight:700;font-size:1.1rem;margin:0;text-wrap:balance}
-.sub{color:var(--muted);margin:6px 0 0;max-width:65ch}
-.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid var(--line)}
-button{font:600 0.92rem var(--body);border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer}
-button:hover{border-color:var(--accent)}
-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-button.small{padding:5px 10px;font-size:.82rem}
-a.btn{font:600 0.92rem var(--body);border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;text-decoration:none;display:inline-block}
-a.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.pdfhelp{border-color:var(--accent)}
-button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.weeks{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.weeks span{color:var(--muted);font-size:.85rem;margin-right:4px}
-.weeks .sync{margin-left:auto}
-.weeks .sync.bad{color:var(--warn)}
-.targets{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
-.target{border-left:4px solid var(--samet);background:var(--surface);padding:10px 14px;border-radius:0 8px 8px 0}
-.target.r{border-left-color:var(--rase)}
-.target b{font-family:var(--display)}
-.target div{color:var(--muted);font-size:.88rem}
-.plan{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.plan-head{background:var(--soft);padding:14px 56px 14px 16px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;justify-content:space-between;position:relative;cursor:pointer}
-.chev{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:36px;height:36px;padding:0;display:grid;place-items:center;border-radius:99px;background:var(--surface)}
-.chev svg{transition:transform .2s}
-.plan.closed .chev svg,.card.closed .chev svg{transform:rotate(-90deg)}
-.card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
-.card-head .chev{position:static;transform:none;flex:none;background:var(--soft)}
-.card-body{display:flex;flex-direction:column;gap:12px;min-width:0}
-.card.closed .card-body{display:none}
-.plan.closed .meal{display:none}
-.plan-head .no{font-family:var(--display);font-weight:700;font-size:1.2rem}
-.plan-head .freq{font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
-.plan-head .days{font-weight:600}
-.meal{padding:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;min-width:0}
-.eyebrow{font-size:.74rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.badge{display:inline-block;font-size:.7rem;font-weight:700;letter-spacing:.06em;background:var(--accent);color:var(--accent-ink);padding:2px 7px;border-radius:4px;vertical-align:middle;margin-left:6px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+.app{max-width:640px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 20px) 16px calc(env(safe-area-inset-bottom,0px) + 104px);display:flex;flex-direction:column;gap:14px}
+h1{font:700 32px/1.1 var(--display);letter-spacing:-.01em;margin:0;text-wrap:balance}
+h2{font:700 18px/1.25 var(--display);margin:0}
+h3{font:700 17px/1.25 var(--display);margin:0}
+p{margin:0}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.note{color:var(--muted);font-size:13px}
+.warnt{color:var(--warn);font-weight:600}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{min-height:46px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:700;font-size:14.5px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;text-align:center}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.big{min-height:54px;font-size:16px;border-radius:16px}
+.btn.warnb{color:var(--warn)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ibtn{width:44px;height:44px;border:0;border-radius:12px;background:transparent;color:var(--muted);display:inline-grid;place-items:center;flex:none;padding:0}
+.ibtn.solid{background:var(--surface);color:var(--ink);border-radius:14px}
+.ibtn:disabled{opacity:.35;cursor:default}
+.ibtn[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.link{border:0;background:none;padding:0;color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;min-height:44px}
+.card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;min-width:0}
+.pad{padding:16px;display:flex;flex-direction:column;gap:12px}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:4px 8px;flex-wrap:wrap}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:8px 4px 0}
+.top>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:0;background:var(--accent-soft);color:var(--accent-deep);font-size:13px;font-weight:600;min-height:32px;flex:none}
+.pill.bad{background:var(--warn-bg);color:var(--warn)}
+.pill.idle{background:var(--surface);color:var(--muted)}
+.chiprow{display:flex;flex-wrap:wrap;gap:8px}
+/* Bugün: gün şeridi, günün toplamı, öğün kartları */
+.days7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dbtn{border:0;border-radius:14px;min-height:64px;padding:6px 0;background:var(--surface);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.dbtn .l{font-size:12px;font-weight:600;opacity:.8}
+.dbtn .n{font:700 18px/1.1 var(--display)}
+.dbtn .b{font-size:10px;font-weight:700;letter-spacing:.04em;opacity:.75}
+.dbtn.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.dbtn[aria-pressed="true"]{background:var(--ink);color:var(--bg);box-shadow:none}
+.ps{--c:var(--samet);--cs:var(--samet-soft);--ci:var(--samet-ink)}
+.pr{--c:var(--rase);--cs:var(--rase-soft);--ci:var(--rase-ink)}
+.who{display:inline-flex;align-items:center;gap:8px;font-weight:700}
+.dot{width:10px;height:10px;border-radius:99px;background:var(--c)}
+.bignum{font:700 22px var(--display)}
+.meter{position:relative;height:10px;border-radius:99px;background:var(--track);margin:2px 0}
+.meter .band{position:absolute;top:-3px;bottom:-3px;border-radius:4px;border:1.5px dashed var(--c);background:var(--cs)}
+.meter .fill{position:absolute;top:0;bottom:0;left:0;border-radius:99px;background:var(--c)}
+.person{display:flex;flex-direction:column;gap:8px}
+.macros{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;font-size:12px;color:var(--muted)}
+.macros b{display:block;color:var(--ink);font-size:15px}
+.macros b.warn{color:var(--warn)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;font-size:12.5px;font-weight:600}
+.chip{padding:3px 8px;border-radius:6px;background:var(--cs);color:var(--ci)}
+.tag{padding:2px 6px;border-radius:5px;background:var(--accent);color:var(--accent-ink);letter-spacing:.04em;font-size:11px;font-weight:700;text-transform:uppercase}
+.meal-h{padding:16px;display:flex;gap:12px;align-items:flex-start}
+.micon{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center}
+.micon.k-b{background:var(--mb);color:var(--mb-ink)}.micon.k-s{background:var(--ms);color:var(--ms-ink)}.micon.k-d{background:var(--md);color:var(--md-ink)}
+.mbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.mbody .eyebrow{display:inline-flex;gap:8px;align-items:center}
+.mtitle{border:0;background:none;padding:0;text-align:left;font:700 19px/1.2 var(--display);color:var(--ink);text-wrap:balance}
+.mfoot{padding:4px 6px 4px 16px;border-top:1px solid var(--line2);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.acts{display:flex;gap:2px}
+.batch{margin:0 16px 12px;padding:12px 14px;border-radius:14px;background:var(--bg);font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.batch b{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.chev{transition:transform .2s;flex:none}
+[aria-expanded="false"]>.chev{transform:rotate(-90deg)}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th{background:var(--soft);color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;padding:8px;text-align:right;white-space:nowrap}
+td{border-top:1px solid var(--line2);padding:9px 8px;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;padding-left:16px;white-space:normal}
+th:last-child,td:last-child{padding-right:16px}
+td+td{font-weight:600}
+th.cs{color:var(--samet-ink)}th.cr{color:var(--rase-ink)}
+tr.gone td{color:var(--faint);text-decoration:line-through}
 .tscroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
-th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
-td.n,th.n{text-align:right;white-space:nowrap;width:1%;padding-left:14px}
-.cs{color:var(--samet);font-weight:600}.cr{color:var(--rase);font-weight:600}
-tr.sum td{border-bottom:0;font-size:.85rem;color:var(--muted)}
-tr.avg td{font-weight:700;border-top:2px solid var(--line)}
-tr.sel td{background:var(--soft);font-weight:700}
-.dayf{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px;max-width:560px}
-.dayf button{padding:6px 0;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
-.dayf small{font-size:.72rem;font-weight:500;opacity:.75}
-.wnav{display:grid;grid-template-columns:40px 1fr 40px;align-items:center;gap:8px}
-.wnav h2{text-align:center;text-wrap:balance}
-.wnav button{width:40px;height:40px;padding:0;display:grid;place-items:center;border-radius:99px}
-.wnav button:disabled{opacity:.35;cursor:default}
-.wact{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:-8px}
-button.warnb{color:var(--warn)}
-.swap{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.swap .prefs{display:flex;gap:6px;margin-left:auto}
-.swap .prefs button{min-width:40px}
-.swap .prefs button[aria-pressed="true"]{background:var(--soft);color:var(--ink);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
-.plist{margin:0;padding-left:18px}.plist li{padding:3px 0}
-button.rm{width:22px;height:22px;padding:0;margin:0 6px 0 -4px;border-radius:99px;font-size:.72rem;line-height:1;color:var(--muted);vertical-align:1px}
-button.rm:hover{color:var(--warn);border-color:var(--warn)}
-tr.gone td{color:var(--muted)}
-.shopprog{margin:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.shop li{display:flex;align-items:flex-start;gap:8px}.shop li label{flex:1;min-width:0}
-button.qed{flex:none;width:32px;height:32px;padding:0;border-radius:99px;color:var(--muted)}
-.dayed{border-color:var(--accent)}
-.dgrid{width:auto}.dgrid th,.dgrid td{padding:3px;text-align:center;border:0}
+td.warn{color:var(--warn);font-weight:700}
+tr.avg td{font-weight:700;background:var(--soft)}
+tr.sel td{background:var(--accent-soft)}
+/* Hafta */
+.wnav{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:4px}
+.wnav>div{text-align:center;display:flex;flex-direction:column;min-width:0}
+.wnav h1{font-size:26px;line-height:1.15}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.cal button{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink);min-height:44px}
+.cal .l{font-size:12px;font-weight:600;color:var(--muted)}
+.cal .num{width:34px;height:34px;border-radius:99px;display:grid;place-items:center;font-weight:700}
+.cal .today .num{background:var(--ink);color:var(--bg)}
+.bp{font-size:11.5px;font-weight:700;padding:3px 0;width:100%;border-radius:6px}
+.t1{background:var(--p1);color:var(--p1-ink)}.t2{background:var(--p2);color:var(--p2-ink)}.t3{background:var(--p3);color:var(--p3-ink)}.t4{background:var(--p4);color:var(--p4-ink)}
+.wact{display:flex;gap:8px;flex-wrap:wrap}
+.wact .btn{flex:1 1 140px;min-height:44px;font-size:14px;font-weight:600;border-radius:12px;padding:0 10px;white-space:nowrap}
+.plan-h{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.plan-h span{font-size:13px;font-weight:700}
+.list{list-style:none;margin:0;padding:0}
+.plan li{display:flex;align-items:center;gap:10px;padding:8px 6px 8px 16px;border-top:1px solid var(--line2)}
+.plan li>div{flex:1;min-width:0;display:flex;flex-direction:column}
+.plan li .eyebrow{font-size:11.5px}
+.mname{border:0;background:none;padding:0;text-align:left;font-weight:600;font-size:15px;line-height:1.3;color:var(--ink)}
+.avg2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.avg2>div{border-radius:14px;padding:12px;background:var(--cs)}
+.avg2 .who{color:var(--ci);font-size:13px}
+.qc{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.qc li{display:flex;gap:8px;align-items:center}
+.qc svg{color:var(--accent)}.qc li.bad{color:var(--warn)}.qc li.bad svg{color:var(--warn)}
+.fold-h{width:100%;min-height:56px;border:0;background:none;padding:0 12px 0 16px;display:flex;align-items:center;gap:10px;text-align:left;color:var(--ink)}
+.fold-h .t{flex:1;font:700 17px var(--display)}
+.cnt{font-size:13px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--bg);color:var(--muted)}
+.cnt.all{background:var(--accent);color:var(--accent-ink)}
+.fold-b{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+.fold-b h3{margin-top:4px}
+.fold-b .tscroll{margin:0 -16px}
+.fold-b ul.note{margin:0;padding-left:18px}
+.dayed .dgrid{width:auto}
+.dgrid th,.dgrid td{padding:3px;text-align:center;border:0;background:none}
 .dgrid tbody th{font-family:var(--display);color:var(--ink);padding-right:8px}
-button.dcell{width:36px;height:36px;padding:0;border-radius:8px;font-size:1rem;color:var(--accent)}
-button.dcell[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.dlist{margin:0;padding-left:18px}.warnt{color:var(--warn);font-weight:600}
-@media (max-width:480px){
-  .meal th,.meal td{padding:5px 4px}
-  .meal td.n,.meal th.n{padding-left:6px}
-  button.rm{width:20px;height:20px;margin:0 5px 0 0;font-size:.66rem}
-}
-.dayf button.today{box-shadow:inset 0 -3px 0 var(--accent)}
-.plan.off{display:none}
-td.warn{background:var(--warn-bg);color:var(--warn);font-weight:700}
-.prep{background:var(--soft);border-radius:8px;padding:10px 14px;font-size:.92rem}
-.prep ol{margin:6px 0 0;padding-left:20px}
-.prep .batch{margin-top:8px;font-size:.86rem;color:var(--muted)}
-.note{font-size:.88rem;color:var(--muted);max-width:70ch}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.qc{display:flex;flex-wrap:wrap;gap:6px}
-.qc span{font-size:.8rem;padding:3px 9px;border-radius:99px;background:var(--soft);color:var(--ok);font-weight:600}
-.qc span.bad{color:var(--warn);background:var(--warn-bg)}
-.shop h4{margin:12px 0 4px;font:700 .95rem var(--display)}
-.shop ul{list-style:none;margin:0;padding:0}
-.shop li{padding:5px 0;border-bottom:1px solid var(--line)}
-.shop label{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
-.shop input[type=checkbox]{margin-top:4px;accent-color:var(--accent)}
-.addrow{display:flex;gap:6px;align-items:stretch}
-.addrow input{font:16px var(--body);min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
-.addrow #addn{flex:2}.addrow #addq{flex:1}
-.addrow input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.shop small{color:var(--muted)}
-.shop input:checked + span{text-decoration:line-through;color:var(--muted)}
-textarea{width:100%;min-height:160px;font:13px/1.5 ui-monospace,Menlo,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+.dcell{width:36px;height:36px;padding:0;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--accent);font-size:1rem}
+.dcell[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.dlist{margin:0;padding-left:18px}
+/* Market */
+.prog{height:8px;border-radius:99px;background:var(--track);overflow:hidden}
+.prog div{height:100%;background:var(--accent);border-radius:99px}
+.addrow{display:flex;gap:8px;flex-wrap:wrap}
+.addrow input{font-size:16px;min-width:0;min-height:46px;padding:0 12px;border:0;border-radius:12px;background:var(--bg);color:var(--ink)}
+.addrow #addn{flex:2 1 150px}.addrow #addq{flex:1 1 80px}
+.shop li{display:flex;align-items:center;border-top:1px solid var(--line2)}
+.shop label{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:10px 0 10px 16px;cursor:pointer}
+.shop input[type=checkbox]{flex:none;width:22px;height:22px;margin:0;accent-color:var(--accent)}
+.shop .nm{flex:1;min-width:0;display:flex;flex-direction:column}
+.shop .nm span{font-weight:600}
+.shop .nm small{font-size:12.5px;color:var(--muted)}
+.shop .amt{flex:none;max-width:45%;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;font-size:14.5px}
+.shop li.done .nm span,.shop li.done .amt{color:var(--faint);text-decoration:line-through}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sr{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0}
+/* Tarif detayı */
+.dhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dhead span{font-size:14px;font-weight:700;color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags span{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--surface);color:var(--muted)}
+.tags span.on{background:var(--accent);color:var(--accent-ink)}
+.pcard{background:var(--surface);border-radius:16px;padding:12px 14px;border-top:4px solid var(--c);display:flex;flex-direction:column}
+.pcard .who{color:var(--ci);font-size:13px}
+.pcard small{font-size:13px;color:var(--muted)}
+.grp{padding:10px 0 6px 16px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--soft);display:flex;align-items:center}
+.grp .g{flex:1}
+.q{width:64px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
+.grp .q.cs{color:var(--samet-ink)}.grp .q.cr{color:var(--rase-ink)}
+.grp .sp,.ing .sp{width:44px;flex:none}
+.ing li{display:flex;align-items:center;border-top:1px solid var(--line2);font-size:14px;min-height:44px}
+.ing .nm{flex:1;min-width:0;padding:8px 0 8px 16px}
+.ing .q{font-weight:600}
+.ing li.gone{color:var(--faint)}.ing li.gone .nm,.ing li.gone .q{text-decoration:line-through}
+.bbox{background:var(--accent-soft);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px;color:var(--accent-deep)}
+.bgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.bgrid div{background:var(--surface);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;color:var(--ink)}
+.bgrid b{font:700 17px var(--display)}
+.bgrid span{font-size:12.5px;color:var(--muted)}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:s}
+.steps li{display:flex;gap:12px;counter-increment:s}
+.steps li::before{content:counter(s);flex:none;width:28px;height:28px;border-radius:99px;background:var(--ink);color:var(--bg);font-weight:700;font-size:14px;display:grid;place-items:center}
+.two .btn{min-height:52px;border-radius:16px}
+.plist li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 6px 4px 16px;border-top:1px solid var(--line2);min-height:52px}
+/* Sekme çubuğu */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding:8px 8px calc(env(safe-area-inset-bottom,0px) + 8px)}
+.tabbar>div{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.tab{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0;color:var(--muted);font-size:12px;font-weight:600}
+.tab span{padding:4px 18px;border-radius:99px;display:grid;place-items:center}
+.tab[aria-current="page"]{color:var(--accent-deep);font-weight:700}
+.tab[aria-current="page"] span{background:var(--accent-soft)}
+#print{display:none}
+.flip{transform:rotate(180deg)}
+.ibtn.fold{background:var(--bg);color:var(--ink)}
+.fold-b.flush{padding:0;gap:0}
 #ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) - 48px);transform:translateX(-50%);width:40px;height:40px;border-radius:99px;display:grid;place-items:center;background:var(--surface);color:var(--accent);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:9;pointer-events:none}
 #ptr svg{transition:transform .2s}
 #ptr.ready svg{transform:rotate(180deg)}
 #ptr.spin svg{animation:ptrspin .8s linear infinite}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
-@media print{#ptr{display:none!important}}
-#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;max-width:90vw;z-index:9}
-@media (max-width:640px){.bar{position:static}}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 88px);transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:14px;font-weight:600;font-size:14px;max-width:calc(100vw - 32px);width:max-content;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+@media print{
+  :root,:root[data-theme="dark"],:root:not([data-theme="light"]){--bg:#fff;--surface:#fff;--ink:#16211b;--muted:#59675e;--line:#dbe2da;--soft:#f3f5f1;--samet-ink:#1d4c8c;--rase-ink:#8f3e14;--accent:#1f6b4f;--warn:#a8461a;color-scheme:light}
+  .app,.tabbar,#toast,#ptr{display:none!important}
+  #print{display:block;font-size:11px;line-height:1.4}
+  #print h1{font-size:20px;margin-bottom:8px}
+  #print h2{font-size:15px;margin:14px 0 4px;padding:4px 8px;background:var(--soft);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #print h3{font-size:12.5px;margin:8px 0 2px}
+  #print table{font-size:10.5px}
+  #print th,#print td{padding:3px 6px;border-top:1px solid var(--line);background:none}
+  #print ol{margin:2px 0 0;padding-left:18px}
+  #print .pm{break-inside:avoid}
+  #print .pb{break-before:page}
+  #print ul{list-style:none;margin:0;padding:0;columns:2;column-gap:24px}
+  #print .note{font-size:10px}
+  @page{size:A4;margin:14mm}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Samet &amp; Raşe – Haftalık Beslenme Planı</h1>
-    <p class="sub">Aynı tencere, iki farklı porsiyon. Plan, ilk 4 haftanın yapısını (günde 3 öğün, BESLENME grupları, protein ağırlıklı ara öğün) sürdürür; akşamlar Türk ev yemeği.</p>
-  </header>
-  <div class="bar">
-    <button class="primary" id="btnNew">Yeni Haftanın Menüsünü Hazırla</button>
-    <button id="btnShop">Market Alışveriş Listesi Oluştur</button>
-    <button id="btnPdf">PDF Olarak İndir</button>
-  </div>
-  <section class="card pdfhelp" id="pdfhelp" hidden>
-    <h3>PDF için Safari’de açın</h3>
+<div class="app">
+  <section class="card pad" id="pdfhelp" hidden>
+    <h2>PDF için Safari’de açın</h2>
     <p class="note">iPhone, ana ekrana eklenen uygulamalarda yazdırmaya izin vermiyor. Plan Safari’de açılınca yazdırma penceresi kendiliğinden gelir; orada <b>Paylaş</b> simgesine dokunup <b>Dosyalara Kaydet</b>’i seçin.</p>
-    <div class="qc" style="gap:8px"><a class="btn primary" id="pdfSafari" href="#">Safari’de aç</a><a class="btn" id="pdfAlt" href="#" target="_blank" rel="noopener">Açılmazsa bunu deneyin</a><button class="small" id="pdfClose">Kapat</button></div>
+    <div class="chiprow"><a class="btn primary" id="pdfSafari" href="#">Safari’de aç</a><a class="btn" id="pdfAlt" href="#" target="_blank" rel="noopener">Açılmazsa bunu deneyin</a><button class="btn" id="pdfClose">Kapat</button></div>
   </section>
-  <div class="weeks" id="weeks"></div>
-  <div class="targets" id="targets"></div>
-  <div id="menu" style="display:flex;flex-direction:column;gap:20px"></div>
-  <section class="card" id="nutri"></section>
-  <section class="card shop" id="shop" hidden></section>
-  <section class="card" id="flex"></section>
-  <section class="card" id="prefs" hidden></section>
+  <main id="view" style="display:flex;flex-direction:column;gap:14px"></main>
 </div>
-<div id="toast" hidden></div>
+<nav class="tabbar" aria-label="Ana menü"><div id="tabs"></div></nav>
+<div id="print"></div>
+<div id="toast" role="status" hidden></div>
 <div id="ptr" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
 
 <script>
@@ -600,7 +668,10 @@ const $=id=>document.getElementById(id),esc=s=>String(s).replace(/&/g,'&amp;').r
 const API=/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?'http://localhost:8787':'https://beslenme-api.samet-krt.workers.dev';
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-let hist=[],cur=0,shopOpen=lsGet('beslenme-shop',false)===true,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
+let hist=[],cur=0,custom=[],ver=lsGet('beslenme-ver',0),dirty=lsGet('beslenme-dirty',false),pin=lsGet('beslenme-pin',''),sync='init';
+/* Görünüm: alt sekme (cihazda hatırlanır) ve açık tarif detayı {pi, k, y} (y = dönüşte kaydırma yeri). */
+const TABS=['today','week','shop','prefs'];
+let tab=lsGet('beslenme-tab','today'),detail=null;if(!TABS.includes(tab))tab='today';
 const validHist=h=>Array.isArray(h)&&h.every(w=>w&&(w.start===undefined||/^\d{4}-\d{2}-\d{2}$/.test(w.start))&&w.plans&&w.plans.length===4&&w.plans.every(p=>ALL[p.b]&&ALL[p.s]&&ALL[p.d]&&(p.g===undefined||GR[p.g])&&(p.x===undefined||validX(p.x)))&&validPlanDays(w)&&validDone(w)&&validQty(w)&&validExtra(w));
 const validExtra=w=>w.extra===undefined||Array.isArray(w.extra)&&w.extra.length<=60&&w.extra.every(x=>x&&/^u_[a-z0-9]{1,16}$/.test(x.k)&&typeof x.n==='string'&&x.n.length>0&&x.n.length<=60);
 const validQty=w=>w.qty===undefined||w.qty&&typeof w.qty==='object'&&!Array.isArray(w.qty)&&Object.keys(w.qty).length<=150&&Object.entries(w.qty).every(([k,v])=>/^[a-z0-9_]{1,32}$/.test(k)&&typeof v==='string'&&v.length>0&&v.length<=40);
@@ -626,31 +697,67 @@ function applyOp(o){const w=hist.find(x=>x.start===o.start);if(!w)return;
   const a=new Set(w.done||[]);o.on?a.add(o.k):a.delete(o.k);if(a.size)w.done=[...a];else delete w.done}
 function doOp(o){o.start=hist[cur].start;pendingOps.push(o);applyOp(o);seq++;dirty=true;saveLocal();render();push()}
 const check=(k,on)=>doOp({k,on});
-const SYNC={init:['Eşitleniyor…',0],ok:['☁︎ Bulutla eşitlendi',0],nopin:['Salt okunur: kaydetmek için PIN girin',1],badpin:['PIN hatalı',1],off:['Çevrimdışı: bu cihazdaki kopya',1]};
-function syncSpan(){const s=SYNC[sync];return '<span id="sync" class="sync'+(s[1]?' bad':'')+'">'+s[0]+'</span>'}
-function syncHTML(){return syncSpan()+'<button class="small" id="pin">'+(pin?'PIN değiştir':'PIN gir')+'</button>'}
-function setSync(s){sync=s;const el=$('sync');if(el)el.outerHTML=syncSpan()}
+/* ===== SİMGELER: 24×24 çizgi simgeler ===== */
+const SV=(d,s=20,w=2,cls)=>'<svg'+(cls?' class="'+cls+'"':'')+' width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+w+'" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
+const I={
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  cart:'<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H6"/><circle cx="10" cy="20.5" r="1"/><circle cx="17" cy="20.5" r="1"/>',
+  heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  cloud:'<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/><path d="m9.5 13.5 2 2 3.5-3.5"/>',
+  cloudOff:'<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/><path d="M12 10.5v3M12 16v.01"/>',
+  key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3"/>',
+  refresh:'<path d="M20 11a8 8 0 0 0-14.6-4.5M4 4v4h4M4 13a8 8 0 0 0 14.6 4.5M20 20v-4h-4"/>',
+  thumb:'<path d="M7 10v11H4V10zM7 10l4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 17.6 21H7"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  undo:'<path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/>',
+  chevR:'<path d="m9 6 6 6-6 6"/>',chevL:'<path d="m15 6-6 6 6 6"/>',chevD:'<path d="m6 9 6 6 6-6"/>',
+  pencil:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  printer:'<path d="M7 9V3h10v6M7 17H4v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6h-3"/><rect x="7" y="14" width="10" height="7"/>',
+  cup:'<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 3v3M12 3v3"/>',
+  apple:'<path d="M12 7c-2-1.5-6-1-6 4 0 4 2.5 9 6 8 3.5 1 6-4 6-8 0-5-4-5.5-6-4zM12 7c0-2 1-3.5 3-4"/>',
+  pot:'<path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM2 10h20M9 6c0-1 1-1 1-2M14 6c0-1 1-1 1-2"/>',
+  check:'<path d="m5 12 5 5 9-10"/>',
+  alert:'<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/>'
+};
+/* Eşitleme durumu: [kısa etiket, rozet sınıfı, simge, açıklama]. Rozete dokununca Tercihler (PIN) açılır. */
+const SYNC={init:['Eşitleniyor…','idle',I.cloud,'Sunucuyla eşitleniyor…'],ok:['Eşitlendi','',I.cloud,'☁︎ Bulutla eşitlendi.'],
+  nopin:['Salt okunur','bad',I.key,'Salt okunur: kaydetmek için PIN girin.'],badpin:['PIN hatalı','bad',I.key,'PIN hatalı; doğru PIN’i girin.'],
+  off:['Çevrimdışı','bad',I.cloudOff,'Çevrimdışı: bu cihazdaki kopya gösteriliyor, bağlantı gelince eşitlenir.']};
+function syncSpan(){const s=SYNC[sync];return '<button id="sync" class="pill '+s[1]+'" data-tab="prefs" title="'+s[3]+'">'+SV(s[2],16)+s[0]+'</button>'}
+function setSync(s){sync=s;const el=$('sync');if(el)el.outerHTML=syncSpan();const l=$('synclong');if(l)l.textContent=SYNC[s][3]}
 /* Sunucudaki durumu benimser (sunucu tek doğru kaynaktır). */
 function adopt(d){
   const keep=custom;loadCustom(d.custom);
   if(!validHist(d.hist)){custom=keep;return false} // boş liste de geçerli: tüm haftalar silinmiş olabilir
   const was=hist[cur]&&hist[cur].start;                       // açık olan haftada kal (arka plan eşitlemesi ekranı zıplatmasın)
   loadPrefs(d.prefs);hist=d.hist;ver=d.v;dirty=datedHist(hist);
-  const i=hist.findIndex(w=>w.start===was);if(i>=0)cur=i;else{cur=pickCur();day=defDay();editDays=null}
+  const i=hist.findIndex(w=>w.start===was);if(i>=0)cur=i;else{cur=pickCur();day=defDay();editDays=null;detail=null}
   if(pendingOps.length){pendingOps.forEach(applyOp);dirty=true}
   saveLocal();render();if(dirty)push();return true;
 }
-/* Gönderimler sıraya alınır; böylece art arda iki değişiklik aynı sürüm üzerine yazmaya çalışmaz. */
-/* Gün filtresi: null = tüm hafta. Güncel haftada bugün, geçmiş haftalarda tüm hafta seçili gelir. */
 const today=()=>(new Date().getDay()+6)%7; // Pazartesi = 0
 const thisMon=()=>mondayOf(new Date());
 const isNow=w=>!!w&&w.start===thisMon();
 const editable=w=>!!w&&w.start>=thisMon();                       // bu hafta ve gelecek haftalar değiştirilebilir; geçmiş salt okunur
 const pickCur=()=>{const i=hist.findIndex(isNow);return i>=0?i:hist.length-1}; // açılışta bu hafta, yoksa son plan
-const defDay=()=>isNow(hist[cur])?today():null;
-let day=null;
-let queue=Promise.resolve(),swapSeen={},closed=lsGet('beslenme-closed',[]); // kapalı BESLENME kartları (yalnızca bu cihaz)
+/* Bugün sekmesinde gösterilen gün: güncel haftada bugün, diğer haftalarda pazartesi. */
+const defDay=()=>isNow(hist[cur])?today():0;
+let day=0;
+let queue=Promise.resolve(),swapSeen={},closed=lsGet('beslenme-closed',[]),opened=lsGet('beslenme-open',[]); // açılır kartlar (yalnızca bu cihaz)
 if(!Array.isArray(closed))closed=[];
+if(!Array.isArray(opened))opened=[];
+/* Market kategorileri açık başlar (kapatılanlar closed'da); öğün malzeme tabloları, besin tablosu ve esnek öğün kapalı başlar (açılanlar opened'da). */
+const DEFCLOSED=k=>k==='nutri'||k==='flex'||k.startsWith('m:');
+const isOpen=k=>DEFCLOSED(k)?opened.includes(k):!closed.includes(k);
+function toggleFold(k){
+  if(DEFCLOSED(k)){opened=opened.includes(k)?opened.filter(v=>v!==k):[...opened,k];lsSet('beslenme-open',opened)}
+  else{closed=closed.includes(k)?closed.filter(v=>v!==k):[...closed,k];lsSet('beslenme-closed',closed)}
+  render();
+}
+/* Gönderimler sıraya alınır; böylece art arda iki değişiklik aynı sürüm üzerine yazmaya çalışmaz. */
 function push(){queue=queue.then(doPush);return queue}
 async function doPush(){
   if(!dirty)return;
@@ -679,196 +786,294 @@ async function pull(){
 }
 function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,3200)}
 const amt=(k,v)=>{if(!v)return '—';const u=F[k].u||'g';return nf(v)+' '+u};
-const r0=v=>Math.round(v);
-function mealHTML(label,rec,ing,days,isDinner,pi,k){
-  const ms=mac(ing,1),mr=mac(ing,2);
-  let h='<div class="meal"><div><div class="eyebrow">'+label+'</div><h3>'+esc(rec.name)+(isDinner&&days>1?'<span class="badge">'+days+' GÜNLÜK</span>':'')+'</h3></div>';
-  h+='<div class="tscroll"><table><thead><tr><th>Malzeme</th><th class="n cs">Samet</th><th class="n cr">Raşe</th></tr></thead><tbody>';
-  const ed=editable(hist[cur]);
-  ing.forEach((i,j)=>{const nm=esc(F[i[0]].n);
-    if(i[4])h+='<tr class="gone"><td>'+(ed?'<button class="rm" data-rm="'+pi+':'+k+':'+j+'" aria-label="'+nm+' geri ekle" title="Geri ekle">↺</button>':'')+'<s>'+nm+'</s></td><td class="n"><s>'+amt(i[0],i[5])+'</s></td><td class="n"><s>'+amt(i[0],i[6])+'</s></td></tr>';
-    else h+='<tr><td>'+(ed?'<button class="rm" data-rm="'+pi+':'+k+':'+j+'" aria-label="'+nm+' çıkar" title="Menüden çıkar">✕</button>':'')+nm+'</td><td class="n">'+amt(i[0],i[1])+'</td><td class="n">'+amt(i[0],i[2])+'</td></tr>'});
-  h+='<tr class="sum"><td>Öğün toplamı</td><td class="n">'+r0(ms[0])+' kcal · '+r0(ms[1])+' g P</td><td class="n">'+r0(mr[0])+' kcal · '+r0(mr[1])+' g P</td></tr></tbody></table></div>';
-  h+='<div class="prep"><b>Hazırlanışı</b><ol>'+rec.steps.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>';
-  if(isDinner&&days>1){const bt=ing.filter(i=>!i[3]&&!i[4]).map(i=>esc(F[i[0]].n.replace(/ \(.*\)/,''))+' '+amt(i[0],(i[1]+i[2])*days));
-    h+=Z.some(z=>z.id===rec.id) // ızgara/balık tek seferlik pişer: toplu pişirme yerine her gün taze
-      ?'<div class="batch"><b>'+days+' gün için toplam malzeme (2 kişi):</b> '+bt.join(' · ')+'. Izgara ve balık bekletilmez; her gün o günün porsiyonunu taze pişirin.</div>'
-      :'<div class="batch"><b>Tencereye girecek toplam (2 kişi × '+days+' gün):</b> '+bt.join(' · ')+'. Pilav, yoğurt ve salata günlük hazırlanır; yemek buzdolabında kapalı kapta '+days+' gün saklanır. Tabağa koyarken eti/proteini tartarak paylaştırın.</div>'}
-  h+='</div>';
-  const pv=PREFS[rec.id];
-  h+='<div class="swap">'+(editable(hist[cur])?'<button class="small" data-swap="'+pi+':'+k+'">↻ Başka '+({b:'kahvaltı',s:'ara öğün',d:'akşam yemeği'})[k]+' getir</button>':'')+ // geçmiş haftalar değiştirilemez
-    '<span class="prefs"><button class="small" data-pref="'+rec.id+':1" aria-pressed="'+(pv===1)+'" aria-label="Sevdik" title="Sevdik: daha sık gelsin">👍</button>'+
-    '<button class="small" data-pref="'+rec.id+':-1" aria-pressed="'+(pv===-1)+'" aria-label="Sevmedik" title="Sevmedik: bir daha önerilmesin">👎</button></span></div>';
-  return h+'</div>';
-}
-/* Açılır/kapanır kart: başlık (ok ile) + gövde; kapalı durum cihazda hatırlanır (closed listesinde anahtar). */
-const CHEV='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
-function foldCard(id,title,body){
-  const el=$(id),op=!closed.includes(id);el.classList.toggle('closed',!op);
-  el.innerHTML='<div class="card-head"><h2>'+title+'</h2><button class="chev" aria-expanded="'+op+'" aria-label="'+title+' göster/gizle">'+CHEV+'</button></div><div class="card-body">'+body+'</div>';
-}
-const ARR=d=>'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+d+'"/></svg>';
-function render(){
-  const w=hist[cur];
-  $('weeks').innerHTML=syncHTML();
-  if(!w){ // tüm haftalar silindiyse
-    $('menu').innerHTML='<p class="note">Henüz plan yok. <b>Yeni Haftanın Menüsünü Hazırla</b>’ya dokunun.</p>';
-    ['targets','nutri','flex'].forEach(id=>$(id).innerHTML='');$('nutri').hidden=$('flex').hidden=true;$('shop').hidden=true;return;
-  }
-  $('nutri').hidden=$('flex').hidden=false;
-  const plans=build(w);
-  $('targets').innerHTML='<div class="target"><b>Samet</b><div>'+T.s.lo+'–'+T.s.hi+' kcal · en az '+T.s.pmin+' g protein (ilk 4 haftanın porsiyonlarından çıkarıldı)</div></div><div class="target r"><b>Raşe</b><div>'+T.r.lo+'–'+T.r.hi+' kcal · 95–110 g protein hedefi</div></div>';
-  const ni=hist.findIndex(isNow),sure=k=>confirmKey===k;
-  let h='<div class="wnav"><button class="small" id="wprev" aria-label="Önceki hafta"'+(cur>0?'':' disabled')+'>'+ARR('m15 18-6-6 6-6')+'</button>'+
-    '<h2>'+weekLabel(w)+'</h2><button class="small" id="wnext" aria-label="Sonraki hafta"'+(cur<hist.length-1?'':' disabled')+'>'+ARR('m9 18 6-6-6-6')+'</button></div>';
-  const acts=[];
-  if(ni>=0&&ni!==cur)acts.push('<button class="small" id="wnow">Bu haftaya dön</button>');
-  if(editable(w))acts.push('<button class="small" id="wdays" aria-pressed="'+!!editDays+'">📅 Günleri düzenle</button>','<button class="small" id="wregen">'+(sure('regen')?'Emin misin? Tekrar dokun':'↻ Menüyü yeniden oluştur')+'</button>',
-    '<button class="small warnb" id="wdel">'+(sure('del')?'Emin misin? Tekrar dokun':'Bu haftayı sil')+'</button>');
-  if(acts.length)h+='<div class="wact">'+acts.join('')+'</div>';
-  if(editDays&&editable(w))h+=dayEditor();
-  h+='<div class="dayf" role="group" aria-label="Güne göre filtrele">'+
-    ['Tümü','Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].map((l,j)=>{const d=j?j-1:null;
-      return '<button class="small'+(isNow(w)&&d===today()?' today':'')+'" data-day="'+(d===null?'':d)+'" aria-pressed="'+(day===d)+'">'+l+(d===null?'':'<small>'+parseYmd(addDays(w.start,d)).getDate()+'</small>')+'</button>'}).join('')+'</div>';
-  plans.forEach((p,i)=>{const n=p.days.length;
-    const show=day===null||p.days.includes(day),op=day!==null||!closed.includes(i); // seçilen günün kartı hep açık gelir
-    h+='<article class="plan'+(op?'':' closed')+(show?'':' off')+'" data-plan="'+i+'"><div class="plan-head"><span class="no">BESLENME – '+(i+1)+' –</span><span class="freq">Haftada '+n+' gün</span><span class="days">'+dayText(p.days)+'</span>'+
-      '<button class="chev" aria-expanded="'+op+'" aria-label="BESLENME '+(i+1)+' göster/gizle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div>';
-    h+=mealHTML('Kahvaltı',ALL[p.b],p.ing.b,n,false,i,'b')+mealHTML('Ara öğün',ALL[p.s],p.ing.s,n,false,i,'s')+mealHTML('Akşam yemeği',view(p,'d'),p.ing.d,n,true,i,'d')+'</article>'});
-  $('menu').innerHTML=h;
-  // günlük tablo
-  const rows={s:[],r:[]};plans.forEach(p=>p.days.forEach(d=>{rows.s[d]=p.tot.s;rows.r[d]=p.tot.r}));
-  let warn=0,nh='';
-  ['s','r'].forEach(k=>{const t=T[k],av=[0,0,0,0,0];
-    nh+='<div><h3 class="'+(k==='s'?'cs':'cr')+'">'+t.name.toUpperCase()+'</h3><div class="tscroll"><table><thead><tr><th>Gün</th><th class="n">Kalori</th><th class="n">Protein</th><th class="n">Karb.</th><th class="n">Yağ</th><th class="n">Lif</th></tr></thead><tbody>';
-    rows[k].forEach((m,d)=>{m.forEach((v,j)=>av[j]+=v/7);const wk=m[0]<t.lo-25||m[0]>t.hi+25,wp=m[1]<t.pmin-3;if(wk||wp)warn++;
-      nh+='<tr'+(d===day?' class="sel"':'')+'><td>'+DAYS[d]+'</td><td class="n'+(wk?' warn':'')+'">'+r0(m[0])+' kcal</td><td class="n'+(wp?' warn':'')+'">'+r0(m[1])+' g</td><td class="n">'+r0(m[2])+' g</td><td class="n">'+r0(m[3])+' g</td><td class="n">'+r0(m[4])+' g</td></tr>'});
-    nh+='<tr class="avg"><td>Haftalık ortalama</td><td class="n">'+r0(av[0])+' kcal</td><td class="n">'+r0(av[1])+' g</td><td class="n">'+r0(av[2])+' g</td><td class="n">'+r0(av[3])+' g</td><td class="n">'+r0(av[4])+' g</td></tr></tbody></table></div></div>'});
-  const prev=hist[cur-1],rep=prev?w.plans.filter(p=>prev.plans.some(q=>q.d===p.d)).length:0;
-  const qc=[['7 gün',plans.reduce((a,p)=>a+p.days.length,0)===7],['4 akşam pişirmesi',true],['Aynı yemek, farklı porsiyon',true],['Kalori ve protein hedefte',warn===0],['Geçen haftanın akşamı tekrar etmiyor',rep===0]];
-  nh+='<div class="qc">'+qc.map(q=>'<span class="'+(q[1]?'':'bad')+'">'+(q[1]?'✓ ':'! ')+q[0]+'</span>').join('')+'</div><p class="note">Değerler, yazılı gramajlardan yaklaşık besin değerleriyle hesaplanır (karbonhidrat net, lif ayrı). Renkli hücre hedef dışı günü gösterir. Et, tahıl ve bakliyat gramajları aksi yazmadıkça çiğ/kuru ağırlıktır; konserve bakliyat süzülmüş (pişmiş) ağırlıktır.</p>';
-  foldCard('nutri','Günlük besin değerleri',nh);
-  foldCard('flex','Kontrollü esnek öğün','<p class="note">Haftada en fazla 1 akşam yemeği, tercihen Pazar akşamının yerine. O gün kahvaltı ve ara öğün aynen uygulanır. Hedef: Samet için yaklaşık 700–800 kcal, Raşe için 550–650 kcal.</p><ul class="note"><li>İnce hamur pizza: Samet 3 dilim, Raşe 2 dilim + büyük yeşil salata</li><li>Suşi (tempurasız): Samet 10–12 parça, Raşe 8 parça + edamame</li><li>Ekmeğin yarısıyla burger + patates yerine salata</li><li>Türk restoranı: tavuk şiş / ızgara köfte + salata; pilavdan 3–4 YK, lavaş yok</li></ul><p class="note">Takviyeler ve su: D vitamini ve omega-3 kahvaltıyla, magnezyum yatmadan önce; günde 2,5–3 L su.</p>');
-  renderShop(w,plans);
-  renderPrefs();
-}
-function renderPrefs(){
-  const ids=Object.keys(PREFS).filter(id=>ALL[id]),el=$('prefs');el.hidden=!ids.length;if(!ids.length)return;
-  const li=v=>ids.filter(id=>PREFS[id]===v).map(id=>'<li>'+esc(ALL[id].name)+' <button class="small" data-unpref="'+id+'">Kaldır</button></li>').join('');
-  const up=li(1),down=li(-1);
-  foldCard('prefs','Tercihleriniz','<p class="note">İkinizin ortak tercihi. Sevdikleriniz daha sık gelir; sevmedikleriniz yeni haftalara konmaz.</p>'+
-    (up?'<h3>👍 Sevdikleriniz</h3><ul class="plist">'+up+'</ul>':'')+(down?'<h3>👎 Sevmedikleriniz</h3><ul class="plist">'+down+'</ul>':''));
-}
-const EXL='🧺 EKLEDİKLERİMİZ'; // kullanıcının eklediği ürünler (week.extra)
+const r0=v=>Math.round(v),fmt=v=>Math.round(v).toLocaleString('tr-TR');
+const SD=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+const KL={b:'Kahvaltı',s:'Ara öğün',d:'Akşam yemeği'},KS={b:'kahvaltı',s:'ara öğün',d:'akşam yemeği'},KI={b:I.cup,s:I.apple,d:I.pot};
+/* Market kategorilerinin ekran adları (kopyalanan metin SECS'teki adları kullanır). */
+const SECL={sebze:'Sebze ve meyve',et:'Et ve balık',yum:'Yumurta',sut:'Süt ürünleri',ekmek:'Ekmek ve kahvaltılık',tahil:'Pirinç, bulgur, makarna, bakliyat',kuru:'Kuruyemiş ve tohum',sos:'Sos, konserve, baharat'};
+const EXL='Eklediklerimiz'; // kullanıcının eklediği ürünler (week.extra)
 const q2=t=>esc(t).replace(/"/g,'&quot;');
+const recOf=(p,k)=>k==='d'?view(p,'d'):ALL[p[k]];
+const planOf=(plans,d)=>Math.max(0,plans.findIndex(p=>p.days.includes(d)));
+const isZ=rec=>Z.some(z=>z.id===rec.id); // ızgara/balık tek seferlik pişer
+const dayWarn=(k,m)=>[m[0]<T[k].lo-25||m[0]>T[k].hi+25,m[1]<T[k].pmin-3];
 let addDraft={n:'',q:''}; // "Ürün ekle" alanında yazılmakta olan metin (arka plan eşitlemesi listeyi yeniden çizerken kaybolmasın)
-function renderShop(w,plans){
-  const el=$('shop');el.hidden=!shopOpen;$('btnShop').textContent=shopOpen?'Market Listesine Git':'Market Alışveriş Listesi Oluştur';if(!shopOpen)return;
-  const sh=shopping(plans),done=w.done||[],qty=w.qty||{},extra=w.extra||[];
-  const all=[...Object.values(sh).flat(),...extra],nd=all.filter(x=>done.includes(x.k)).length;
-  const focus=document.activeElement&&document.activeElement.id;
-  let h='<p class="note">Samet + Raşe toplamı, 7 gün. Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır. İşaretler, ✎ ile düzelttiğiniz miktarlar ve eklediğiniz ürünler iki telefonda da görünür.</p>'+
-    '<p class="shopprog"><b>'+nd+' / '+all.length+'</b> alındı'+(nd?' <button class="small" id="ckclear">İşaretleri temizle</button>':'')+'</p>'+
-    '<form class="addrow" id="addform"><input id="addn" type="text" placeholder="Ürün ekle (ör. kahve)" maxlength="60" autocomplete="off" aria-label="Eklenecek ürün" value="'+q2(addDraft.n)+'">'+
-    '<input id="addq" type="text" placeholder="Miktar" maxlength="40" autocomplete="off" aria-label="Miktar (isteğe bağlı)" value="'+q2(addDraft.q)+'"><button class="small primary" type="submit">Ekle</button></form>';
-  const row=(x,own)=>{const q=qty[x.k],buy=q||x.buy||'';
-    return '<li><label><input type="checkbox" data-ck="'+x.k+'"'+(done.includes(x.k)?' checked':'')+'><span>'+esc(x.n)+(buy?' — <b>'+esc(buy)+'</b>':'')+
-      (own?'':q?' <small>(elle düzeltildi; hesaplanan: '+x.buy+')</small>':x.need?' <small>(gerekli: '+x.need+')</small>':'')+'</span></label>'+
-      '<button class="small qed" data-qty="'+x.k+'" data-cur="'+q2(buy)+'" aria-label="'+q2(x.n)+' miktarını düzelt" title="Miktarı düzelt">✎</button>'+
-      (own?'<button class="small qed" data-del="'+x.k+'" aria-label="'+q2(x.n)+' listeden sil" title="Listeden sil">✕</button>':'')+'</li>'};
-  if(extra.length)h+='<h4>'+EXL+'</h4><ul>'+doneLast(extra,done).map(x=>row(x,true)).join('')+'</ul>';
-  SECS.forEach(([k,l])=>{if(!sh[k].length)return;h+='<h4>'+l+'</h4><ul>'+doneLast(sh[k],done).map(x=>row(x,false)).join('')+'</ul>'});
-  h+='<div><button id="copy">Listeyi kopyala (Apple Notes)</button></div><textarea id="shoptxt" readonly aria-label="Kopyalanabilir alışveriş listesi"></textarea>';
-  foldCard('shop',rangeLabel(w.start)+' – Market alışveriş listesi',h);$('shoptxt').value=shopText(w,plans);
-  if(focus==='addn'||focus==='addq'){const e=$(focus);e.focus();e.setSelectionRange(e.value.length,e.value.length)}
+/* Açılır kart: başlık düğmesi (sağda isteğe bağlı rozet + ok) ve gövde. */
+function foldHTML(id,title,body,extra,flush){
+  const op=isOpen(id);
+  return '<section class="card"><button class="fold-h" data-fold="'+id+'" aria-expanded="'+op+'"><span class="t">'+title+'</span>'+(extra||'')+SV(I.chevD,20,2.2,'chev')+'</button>'+
+    (op?'<div class="fold-b'+(flush?' flush':'')+'">'+body+'</div>':'')+'</section>';
 }
-/* Yeni hafta: bu hafta yoksa bu hafta, varsa gelecek hafta hazırlanır; en fazla 1 hafta ileriye. */
-$('btnNew').onclick=()=>{
-  window.scrollTo({top:0});
-  if(nextStart(hist)>addDays(thisMon(),7)){cur=hist.length-1;day=defDay();render();toast('Gelecek haftanın menüsü zaten hazır');return}
-  const w=generate(hist);hist.push(w);if(hist.length>26)hist.shift();cur=hist.indexOf(w);day=defDay();confirmKey=null;save();render();toast(weekLabel(w)+' hazır');
-};
-/* Yeniden oluştur / sil: ilk dokunuşta düğme "Emin misin?" olur, 4 sn içinde ikinci dokunuş onaylar. */
-let confirmKey=null;
-function arm(k){confirmKey=k;render();clearTimeout(arm.t);arm.t=setTimeout(()=>{if(confirmKey===k){confirmKey=null;render()}},4000)}
-function go(i){cur=i;day=defDay();confirmKey=null;editDays=null;render()}
+const chipsHTML=ing=>{const ms=mac(ing,1),mr=mac(ing,2);
+  return '<div class="chips"><span class="chip ps">Samet '+r0(ms[0])+' kcal · '+r0(ms[1])+' g P</span><span class="chip pr">Raşe '+r0(mr[0])+' kcal · '+r0(mr[1])+' g P</span></div>'};
+const swapBtn=(pi,k,cls)=>'<button class="ibtn'+(cls||'')+'" data-swap="'+pi+':'+k+'" aria-label="Başka '+KS[k]+' getir" title="Başka '+KS[k]+' getir">'+SV(I.refresh)+'</button>';
+const prefIcons=id=>{const pv=PREFS[id];
+  return '<button class="ibtn" data-pref="'+id+':1" aria-pressed="'+(pv===1)+'" aria-label="Sevdik" title="Sevdik: daha sık gelsin">'+SV(I.thumb)+'</button>'+
+    '<button class="ibtn" data-pref="'+id+':-1" aria-pressed="'+(pv===-1)+'" aria-label="Sevmedik" title="Sevmedik: bir daha önerilmesin">'+SV(I.thumb,20,2,'flip')+'</button>'};
+/* 2+ günlük akşamın tencereye girecek toplamı (servis anında hazırlananlar ve çıkarılanlar hariç). */
+const batchOf=(ing,n)=>ing.filter(i=>!i[3]&&!i[4]).map(i=>[F[i[0]].n.replace(/ \(.*\)/,''),amt(i[0],(i[1]+i[2])*n)]);
+function tabsHTML(){
+  return [['today','Bugün',I.sun],['week','Hafta',I.cal],['shop','Market',I.cart],['prefs','Tercihler',I.heart]].map(([k,l,ic])=>
+    '<button class="tab" data-tab="'+k+'"'+(tab===k?' aria-current="page"':'')+'><span>'+SV(ic,22)+'</span>'+l+'</button>').join('');
+}
+/* ===== BUGÜN ===== */
+function personHTML(k,m){
+  const t=T[k],sc=t.hi*1.12,pc=v=>Math.min(100,v/sc*100).toFixed(1)+'%',[wk,wp]=dayWarn(k,m);
+  return '<div class="person '+(k==='s'?'ps':'pr')+'"><div class="row"><span class="who"><span class="dot"></span>'+t.name+'</span>'+
+    '<span><b class="bignum'+(wk?' warnt':'')+'">'+fmt(m[0])+'</b> <span class="note">/ '+fmt(t.lo)+'–'+fmt(t.hi)+' kcal</span></span></div>'+
+    '<div class="meter" role="img" aria-label="'+t.name+': '+r0(m[0])+' kcal, hedef '+t.lo+'–'+t.hi+' kcal"><div class="band" style="left:'+pc(t.lo)+';width:'+((t.hi-t.lo)/sc*100).toFixed(1)+'%"></div><div class="fill" style="width:'+pc(m[0])+'"></div></div>'+
+    '<div class="macros"><span><b'+(wp?' class="warn"':'')+'>'+r0(m[1])+' g</b>Protein (≥'+t.pmin+')</span><span><b>'+r0(m[2])+' g</b>Karb.</span><span><b>'+r0(m[3])+' g</b>Yağ</span><span><b>'+r0(m[4])+' g</b>Lif</span></div></div>';
+}
+function todayMeal(p,pi,k){
+  const rec=recOf(p,k),ing=p.ing[k],n=p.days.length,ed=editable(hist[cur]),fk='m:'+k,op=isOpen(fk);
+  let h='<article class="card"><div class="meal-h"><span class="micon k-'+k+'">'+SV(KI[k],22)+'</span><div class="mbody">'+
+    '<span class="eyebrow">'+KL[k]+(k==='d'&&n>1?' <span class="tag">'+n+' günlük</span>':'')+'</span>'+
+    '<button class="mtitle" data-open="'+pi+':'+k+'">'+esc(rec.name)+'</button>'+chipsHTML(ing)+'</div>'+
+    '<button class="ibtn fold" data-fold="'+fk+'" aria-expanded="'+op+'" aria-label="'+KL[k]+' malzemelerini göster/gizle">'+SV(I.chevD,20,2.2,'chev')+'</button></div>';
+  if(op)h+='<div class="tscroll"><table><thead><tr><th>Malzeme</th><th class="cs">Samet</th><th class="cr">Raşe</th></tr></thead><tbody>'+
+    ing.map(i=>'<tr'+(i[4]?' class="gone"':'')+'><td>'+esc(F[i[0]].n)+'</td><td>'+amt(i[0],i[4]?i[5]:i[1])+'</td><td>'+amt(i[0],i[4]?i[6]:i[2])+'</td></tr>').join('')+'</tbody></table></div>';
+  if(k==='d'&&n>1)h+='<div class="batch"'+(op?' style="margin-top:12px"':'')+'><b>'+(isZ(rec)?n+' gün için toplam · 2 kişi':'Tencereye · 2 kişi × '+n+' gün')+'</b><span>'+batchOf(ing,n).map(([a,b])=>esc(a)+' '+b).join(' · ')+'</span></div>';
+  return h+'<div class="mfoot"><button class="link" data-open="'+pi+':'+k+'">'+(k==='d'?'Tarifi aç':'Hazırlanışı · '+rec.steps.length+' adım')+SV(I.chevR,16,2.2)+'</button>'+
+    '<div class="acts">'+(ed?swapBtn(pi,k):'')+prefIcons(rec.id)+'</div></div></article>';
+}
+function todayHTML(w,plans){
+  const pi=planOf(plans,day),p=plans[pi],ni=hist.findIndex(isNow);
+  let h='<header class="top"><div><span class="eyebrow">'+esc(weekLabel(w))+'</span><h1>'+DAYS[day]+'</h1></div>'+syncSpan()+'</header>';
+  if(ni>=0&&ni!==cur)h+='<div class="chiprow"><button class="btn" id="wnow">Bu haftaya dön</button></div>';
+  h+='<nav class="days7" aria-label="Günler">'+SD.map((l,d)=>{const j=planOf(plans,d);
+    return '<button class="dbtn'+(isNow(w)&&d===today()?' today':'')+'" data-day="'+d+'" aria-pressed="'+(d===day)+'" aria-label="'+DAYS[d]+', BESLENME '+(j+1)+'">'+
+      '<span class="l">'+l+'</span><span class="n">'+parseYmd(addDays(w.start,d)).getDate()+'</span><span class="b">B'+(j+1)+'</span></button>'}).join('')+'</nav>';
+  h+='<section class="card pad sum" aria-labelledby="sumh"><div class="row"><h2 id="sumh">Günün toplamı</h2><span class="note" style="font-weight:600">BESLENME '+(pi+1)+' · '+p.days.map(d=>SD[d]).join(', ')+'</span></div>'+
+    personHTML('s',p.tot.s)+personHTML('r',p.tot.r)+'</section>';
+  h+='<h2 style="margin:8px 4px 0">Öğünler</h2>';
+  if(!editable(w))h+='<p class="note" style="margin:0 4px">Geçmiş hafta: menü salt okunur.</p>';
+  return h+['b','s','d'].map(k=>todayMeal(p,pi,k)).join('');
+}
+/* ===== HAFTA ===== */
+function nutriHTML(plans){
+  const rows={s:[],r:[]};plans.forEach(p=>p.days.forEach(d=>{rows.s[d]=p.tot.s;rows.r[d]=p.tot.r}));
+  let nh='';
+  ['s','r'].forEach(k=>{const av=[0,0,0,0,0];
+    nh+='<h3 style="color:var(--'+(k==='s'?'samet':'rase')+'-ink)">'+T[k].name+'</h3><div class="tscroll"><table><thead><tr><th>Gün</th><th>Kalori</th><th>Protein</th><th>Karb.</th><th>Yağ</th><th>Lif</th></tr></thead><tbody>';
+    rows[k].forEach((m,d)=>{m.forEach((v,j)=>av[j]+=v/7);const[wk,wp]=dayWarn(k,m);
+      nh+='<tr><td>'+DAYS[d]+'</td><td'+(wk?' class="warn"':'')+'>'+r0(m[0])+' kcal</td><td'+(wp?' class="warn"':'')+'>'+r0(m[1])+' g</td><td>'+r0(m[2])+' g</td><td>'+r0(m[3])+' g</td><td>'+r0(m[4])+' g</td></tr>'});
+    nh+='<tr class="avg"><td>Ortalama</td><td>'+r0(av[0])+' kcal</td><td>'+r0(av[1])+' g</td><td>'+r0(av[2])+' g</td><td>'+r0(av[3])+' g</td><td>'+r0(av[4])+' g</td></tr></tbody></table></div>'});
+  return nh+'<p class="note">Değerler, yazılı gramajlardan yaklaşık besin değerleriyle hesaplanır (karbonhidrat net, lif ayrı). Renkli hücre hedef dışı günü gösterir. Et, tahıl ve bakliyat gramajları aksi yazmadıkça çiğ/kuru ağırlıktır; konserve bakliyat süzülmüş (pişmiş) ağırlıktır.</p>';
+}
+function checksOf(w,plans){
+  let warn=0;plans.forEach(p=>['s','r'].forEach(k=>{const[a,b]=dayWarn(k,p.tot[k]);if(a||b)warn+=p.days.length}));
+  const prev=hist[cur-1],rep=prev?w.plans.filter(p=>prev.plans.some(q=>q.d===p.d)).length:0;
+  return [['7 gün planlı, 4 akşam pişirmesi',plans.reduce((a,p)=>a+p.days.length,0)===7],['Aynı yemek, kişiye göre porsiyon',true],
+    [warn?'Bazı günler hedef dışında (tabloda işaretli)':'Her gün kalori ve protein hedefte',warn===0],[rep?'Geçen haftanın bir akşamı tekrar ediyor':'Geçen haftanın akşamları tekrar etmiyor',rep===0]];
+}
+const FLEX='<p class="note">Haftada en fazla 1 akşam yemeği, tercihen Pazar akşamının yerine. O gün kahvaltı ve ara öğün aynen uygulanır. Hedef: Samet için yaklaşık 700–800 kcal, Raşe için 550–650 kcal.</p><ul class="note"><li>İnce hamur pizza: Samet 3 dilim, Raşe 2 dilim + büyük yeşil salata</li><li>Suşi (tempurasız): Samet 10–12 parça, Raşe 8 parça + edamame</li><li>Ekmeğin yarısıyla burger + patates yerine salata</li><li>Türk restoranı: tavuk şiş / ızgara köfte + salata; pilavdan 3–4 YK, lavaş yok</li></ul><p class="note">Takviyeler ve su: D vitamini ve omega-3 kahvaltıyla, magnezyum yatmadan önce; günde 2,5–3 L su.</p>';
+function weekHTML(w,plans){
+  const ni=hist.findIndex(isNow),sure=k=>confirmKey===k,ed=editable(w);
+  let h='<header class="wnav"><button class="ibtn solid" id="wprev" aria-label="Önceki hafta"'+(cur>0?'':' disabled')+'>'+SV(I.chevL,22,2.2)+'</button>'+
+    '<div><span class="eyebrow">'+relLabel(w.start)+'</span><h1>'+rangeLabel(w.start)+'</h1></div>'+
+    '<button class="ibtn solid" id="wnext" aria-label="Sonraki hafta"'+(cur<hist.length-1?'':' disabled')+'>'+SV(I.chevR,22,2.2)+'</button></header>';
+  if(ni>=0&&ni!==cur)h+='<div class="chiprow" style="justify-content:center"><button class="btn" id="wnow">Bu haftaya dön</button></div>';
+  h+='<section class="card pad" aria-label="Günlere göre dağılım"><div class="cal">'+SD.map((l,d)=>{const j=planOf(plans,d);
+    return '<button data-goday="'+d+'"'+(isNow(w)&&d===today()?' class="today"':'')+' aria-label="'+DAYS[d]+': BESLENME '+(j+1)+', Bugün sekmesinde aç">'+
+      '<span class="l">'+l+'</span><span class="num">'+parseYmd(addDays(w.start,d)).getDate()+'</span><span class="bp t'+(j+1)+'">B'+(j+1)+'</span></button>'}).join('')+'</div>';
+  if(ed)h+='<div class="wact"><button class="btn" id="wdays" aria-pressed="'+!!editDays+'">'+SV(I.cal,18)+'Günleri düzenle</button>'+
+    '<button class="btn" id="wregen">'+SV(I.refresh,18)+(sure('regen')?'Emin misin? Tekrar dokun':'Yeniden oluştur')+'</button></div>';
+  h+='</section>';
+  if(editDays&&ed)h+=dayEditor();
+  plans.forEach((p,i)=>{h+='<article class="card plan"><div class="plan-h t'+(i+1)+'"><h2>BESLENME '+(i+1)+'</h2><span>'+dayText(p.days)+' · '+p.days.length+' gün</span></div><ul class="list">'+
+    ['b','s','d'].map(k=>'<li><div><span class="eyebrow">'+KL[k]+'</span><button class="mname" data-open="'+i+':'+k+'">'+esc(recOf(p,k).name)+'</button></div>'+(ed?swapBtn(i,k):'')+'</li>').join('')+'</ul></article>'});
+  const av={s:[0,0],r:[0,0]};plans.forEach(p=>['s','r'].forEach(k=>{av[k][0]+=p.tot[k][0]*p.days.length/7;av[k][1]+=p.tot[k][1]*p.days.length/7}));
+  h+='<section class="card pad" aria-labelledby="avgh"><h2 id="avgh">Haftalık ortalama</h2><div class="avg2">'+['s','r'].map(k=>'<div class="'+(k==='s'?'ps':'pr')+'"><span class="who">'+T[k].name+'</span>'+
+    '<div><b class="bignum">'+fmt(av[k][0])+'</b> kcal</div><span style="font-size:13px">'+r0(av[k][1])+' g protein / gün</span></div>').join('')+'</div>'+
+    '<ul class="qc">'+checksOf(w,plans).map(q=>'<li'+(q[1]?'':' class="bad"')+'>'+SV(q[1]?I.check:I.alert,18,2.4)+q[0]+'</li>').join('')+'</ul></section>';
+  h+=foldHTML('nutri','Günlük besin değerleri',nutriHTML(plans))+foldHTML('flex','Kontrollü esnek öğün',FLEX);
+  const ns=nextStart(hist);
+  if(ns<=addDays(thisMon(),7))h+='<button class="btn primary big" id="wnew">'+SV(I.plus)+(ns===thisMon()?'Bu haftanın':'Gelecek haftanın')+' menüsünü hazırla</button>';
+  return h+'<div class="two"><button class="btn" data-pdf="1">'+SV(I.printer,18)+'PDF olarak indir</button>'+
+    (ed?'<button class="btn warnb" id="wdel">'+(sure('del')?'Emin misin? Tekrar dokun':'Bu haftayı sil')+'</button>':'')+'</div>';
+}
 /* Gün düzenleyici: satır = BESLENME, sütun = gün. Hücreye dokununca o gün o BESLENME'ye geçer (her biri 1–3 gün). */
 let editDays=null;
-const SD=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 function dayEditor(){
-  let h='<section class="card dayed"><h3>Günleri düzenle</h3><p class="note">Bir güne dokunarak o günü bir BESLENME’ye verin. Her BESLENME 1–3 gün; günler ardışık olmak zorunda değil.</p>'+
+  let h='<section class="card pad dayed"><h2>Günleri düzenle</h2><p class="note">Bir güne dokunarak o günü bir BESLENME’ye verin. Her BESLENME 1–3 gün; günler ardışık olmak zorunda değil.</p>'+
     '<div class="tscroll"><table class="dgrid"><thead><tr><th></th>'+SD.map(d=>'<th>'+d+'</th>').join('')+'</tr></thead><tbody>';
   editDays.forEach((a,i)=>{h+='<tr><th>B'+(i+1)+'</th>'+SD.map((_,d)=>'<td><button class="dcell" data-dc="'+i+':'+d+'" aria-pressed="'+a.includes(d)+'" aria-label="BESLENME '+(i+1)+', '+DAYS[d]+'">'+(a.includes(d)?'●':'')+'</button></td>').join('')+'</tr>'});
   h+='</tbody></table></div><ul class="note dlist">'+editDays.map((a,i)=>{const sp=a[a.length-1]-a[0]+1;
     return '<li><b>BESLENME '+(i+1)+':</b> '+dayText(a)+' ('+a.length+' gün)'+(a.length>1&&sp>3?' <span class="warnt">⚠ ilk ve son gün arası '+sp+' gün: pişmiş yemek 3 günden fazla beklemesin, gerekirse dondurun</span>':'')+'</li>'}).join('')+'</ul>';
-  return h+'<div class="wact" style="justify-content:flex-start;margin:0"><button class="small primary" id="dsave">Kaydet</button><button class="small" id="dcancel">Vazgeç</button></div></section>';
+  return h+'<div class="wact"><button class="btn primary" id="dsave">Kaydet</button><button class="btn" id="dcancel">Vazgeç</button></div></section>';
 }
-$('btnShop').onclick=()=>{shopOpen=true;lsSet('beslenme-shop',true);if(closed.includes('shop')){closed=closed.filter(v=>v!=='shop');lsSet('beslenme-closed',closed)} // kart kapalıysa aç
-  render();$('shop').scrollIntoView({behavior:'smooth',block:'start'});if(!dirty){lastPoll=Date.now();pull()}}; // diğer telefonun işaretlerini hemen al
+/* ===== MARKET ===== */
+function shopHTML(w,plans){
+  const sh=shopping(plans),done=w.done||[],qty=w.qty||{},extra=w.extra||[];
+  const all=[...Object.values(sh).flat(),...extra],nd=all.filter(x=>done.includes(x.k)).length;
+  let h='<header class="top"><div><span class="eyebrow">'+rangeLabel(w.start)+' · 2 kişi, 7 gün</span><h1>Market</h1></div>'+
+    '<button class="ibtn solid" data-copy="1" aria-label="Listeyi kopyala (Apple Notes)" title="Listeyi kopyala">'+SV(I.copy)+'</button></header>';
+  h+='<section class="card pad"><div class="row"><span><b class="bignum">'+nd+'</b> <span class="note">/ '+all.length+' alındı</span></span>'+syncSpan()+'</div>'+
+    '<div class="prog" role="img" aria-label="'+nd+' / '+all.length+' alındı"><div style="width:'+(all.length?Math.round(nd/all.length*100):0)+'%"></div></div>'+
+    '<form class="addrow" id="addform"><input id="addn" type="text" placeholder="Ürün ekle (ör. kahve)" maxlength="60" autocomplete="off" aria-label="Eklenecek ürün" value="'+q2(addDraft.n)+'">'+
+    '<input id="addq" type="text" placeholder="Miktar" maxlength="40" autocomplete="off" aria-label="Miktar (isteğe bağlı)" value="'+q2(addDraft.q)+'"><button class="btn primary" type="submit">Ekle</button></form>'+
+    '<p class="note">Her BESLENME’nin kaç gün uygulandığı hesaba katılır; miktarlar market paketine yuvarlanır. İşaretler, ✎ ile düzelttiğiniz miktarlar ve eklediğiniz ürünler iki telefonda da görünür.</p>'+
+    (nd?'<button class="link" id="ckclear" style="align-self:flex-start">İşaretleri temizle</button>':'')+'</section>';
+  const row=(x,own)=>{const q=qty[x.k],buy=q||x.buy||'',dn=done.includes(x.k),sub=own?'':q?'hesaplanan: '+x.buy:x.need?'gerekli: '+x.need:'';
+    return '<li'+(dn?' class="done"':'')+'><label><input type="checkbox" data-ck="'+x.k+'"'+(dn?' checked':'')+'><span class="nm"><span>'+esc(x.n)+'</span>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</span>'+
+      (buy?'<b class="amt">'+esc(buy)+'</b>':'')+'</label>'+
+      '<button class="ibtn" data-qty="'+x.k+'" data-cur="'+q2(buy)+'" aria-label="'+q2(x.n)+' miktarını düzelt" title="Miktarı düzelt">'+SV(I.pencil,17)+'</button>'+
+      (own?'<button class="ibtn" data-del="'+x.k+'" aria-label="'+q2(x.n)+' listeden sil" title="Listeden sil">'+SV(I.x,16,2.2)+'</button>':'')+'</li>'};
+  const cat=(k,l,items,own)=>{const c=items.filter(x=>done.includes(x.k)).length;
+    return foldHTML('shop:'+k,l,'<ul class="list shop">'+doneLast(items,done).map(x=>row(x,own)).join('')+'</ul>','<span class="cnt'+(c===items.length?' all':'')+'">'+c+'/'+items.length+'</span>',true)};
+  if(extra.length)h+=cat('extra',EXL,extra,true);
+  SECS.forEach(([k])=>{if(sh[k].length)h+=cat(k,SECL[k],sh[k],false)});
+  return h+'<div class="two"><button class="btn" data-copy="1">'+SV(I.copy,18)+'Notlar’a kopyala</button><button class="btn" data-pdf="1">'+SV(I.printer,18)+'PDF olarak indir</button></div>'+
+    '<textarea id="shoptxt" class="sr" readonly tabindex="-1" aria-hidden="true"></textarea>';
+}
+/* ===== TERCİHLER ===== */
+function prefsHTML(){
+  let h='<header class="top"><div><span class="eyebrow">Samet &amp; Raşe</span><h1>Tercihler</h1></div></header>';
+  h+='<section class="card pad"><div class="row"><h2>Bulut eşitleme</h2>'+syncSpan()+'</div><p class="note" id="synclong">'+SYNC[sync][3]+'</p>'+
+    '<p class="note">Plan iki telefonda da aynı görünür. Değişiklik yapmak için ortak PIN gerekir; her cihazda bir kez girilir.</p>'+
+    '<button class="btn" id="pin" style="align-self:flex-start">'+SV(I.key,18)+(pin?'PIN değiştir':'PIN gir')+'</button></section>';
+  const ids=Object.keys(PREFS).filter(id=>ALL[id]);
+  const li=v=>ids.filter(id=>PREFS[id]===v).map(id=>'<li><span>'+esc(ALL[id].name)+'</span><button class="btn" style="min-height:40px" data-unpref="'+id+'">Kaldır</button></li>').join('');
+  [[1,'Sevdikleriniz','Daha sık gelir.',''],[-1,'Sevmedikleriniz','Yeni haftalara konmaz.','flip']].forEach(([v,t,s,f])=>{const l=li(v);
+    h+='<section class="card"><div class="pad" style="padding-bottom:12px;gap:2px"><h2 style="display:flex;gap:8px;align-items:center">'+SV(I.thumb,18,2,f)+t+'</h2><p class="note">'+s+'</p></div>'+
+      (l?'<ul class="list plist">'+l+'</ul>':'<p class="note" style="padding:0 16px 16px">Henüz yok. Bir tarifteki başparmak düğmesiyle ekleyin.</p>')+'</section>'});
+  h+='<section class="card pad"><h2>Hedefler</h2><div class="person ps"><span class="who"><span class="dot"></span>Samet</span><span class="note">'+fmt(T.s.lo)+'–'+fmt(T.s.hi)+' kcal · en az '+T.s.pmin+' g protein (ilk 4 haftanın porsiyonlarından çıkarıldı)</span></div>'+
+    '<div class="person pr"><span class="who"><span class="dot"></span>Raşe</span><span class="note">'+fmt(T.r.lo)+'–'+fmt(T.r.hi)+' kcal · 95–110 g protein hedefi</span></div></section>';
+  return h;
+}
+/* ===== TARİF DETAYI ===== */
+function detailHTML(w,plans){
+  const{pi,k}=detail,p=plans[pi],rec=recOf(p,k),ing=p.ing[k],n=p.days.length,ed=editable(w),pv=PREFS[rec.id],ms=mac(ing,1),mr=mac(ing,2);
+  const g=k==='d'&&GR[p.g]&&grainOf(ALL[p.d])?GR[p.g][0]:null;
+  let h='<header class="dhead"><button class="ibtn solid" id="back" aria-label="Geri">'+SV(I.chevL,22,2.2)+'</button><span>'+KL[k]+'</span>'+
+    (ed?swapBtn(pi,k,' solid'):'<span class="ibtn" aria-hidden="true"></span>')+'</header>';
+  h+='<section style="display:flex;flex-direction:column;gap:10px;padding:0 4px"><div class="tags">'+(k==='d'&&n>1?'<span class="on">'+n+' günlük</span>':'')+
+    '<span>'+dayText(p.days)+'</span>'+(g?'<span>Bu hafta '+g+'</span>':'')+'<span>BESLENME '+(pi+1)+'</span></div><h1>'+esc(rec.name)+'</h1></section>';
+  h+='<div class="two">'+[['s',ms,'ps'],['r',mr,'pr']].map(([x,m,c])=>'<div class="pcard '+c+'"><span class="who">'+T[x].name+'</span><div><b class="bignum">'+fmt(m[0])+'</b> <small>kcal</small></div><small>'+r0(m[1])+' g protein</small></div>').join('')+'</div>';
+  const rows=ing.map((i,j)=>({i,j})),groups=k==='d'&&!isZ(rec)?[['Tencere',rows.filter(o=>!o.i[3])],['Servis ederken (her gün)',rows.filter(o=>o.i[3])]].filter(x=>x[1].length):[['',rows]];
+  h+='<section class="card" aria-labelledby="ingh"><div class="pad" style="padding-bottom:10px"><div class="row"><h2 id="ingh">Malzemeler</h2><span class="note">1 gün · kişi başı</span></div></div>';
+  groups.forEach(([t,rs])=>{h+='<div class="grp"><span class="g">'+t+'</span><span class="q cs">Samet</span><span class="q cr">Raşe</span><span class="sp"></span></div><ul class="list ing">'+
+    rs.map(({i,j})=>{const nm=esc(F[i[0]].n),gone=!!i[4];
+      return '<li'+(gone?' class="gone"':'')+'><span class="nm">'+nm+'</span><span class="q">'+amt(i[0],gone?i[5]:i[1])+'</span><span class="q">'+amt(i[0],gone?i[6]:i[2])+'</span>'+
+        (ed?'<button class="ibtn" data-rm="'+pi+':'+k+':'+j+'" aria-label="'+nm+(gone?' geri ekle':' menüden çıkar')+'" title="'+(gone?'Geri ekle':'Menüden çıkar')+'">'+SV(gone?I.undo:I.x,gone?17:16,2.2)+'</button>':'<span class="sp"></span>')+'</li>'}).join('')+'</ul>'});
+  h+='<p class="note" style="padding:10px 16px 14px;border-top:1px solid var(--line2)">Et, tahıl ve bakliyat gramajları aksi yazmadıkça çiğ / kuru ağırlıktır; konserve bakliyat süzülmüş ağırlıktır.'+(ed?' Çıkardığınız malzeme günlük toplamdan düşülür.':'')+'</p></section>';
+  if(k==='d'&&n>1)h+='<section class="bbox"><h2>'+(isZ(rec)?n+' gün için toplam':'Tencereye girecek toplam')+'</h2><span style="font-size:13px;margin-top:-6px">2 kişi × '+n+' gün</span>'+
+    '<div class="bgrid">'+batchOf(ing,n).map(([a,b])=>'<div><b>'+b+'</b><span>'+esc(a)+'</span></div>').join('')+'</div><p style="font-size:13px">'+
+    (isZ(rec)?'Izgara ve balık bekletilmez; her gün o günün porsiyonunu taze pişirin.':'Pilav, yoğurt ve salata günlük hazırlanır; yemek buzdolabında kapalı kapta '+n+' gün saklanır. Tabağa koyarken eti/proteini tartarak paylaştırın.')+'</p></section>';
+  h+='<section class="card pad" aria-labelledby="steph"><div class="row"><h2 id="steph">Hazırlanışı</h2>'+((rec.spice||[]).length?'<span class="note">'+rec.spice.map(esc).join(' · ')+'</span>':'')+'</div>'+
+    '<ol class="steps">'+rec.steps.map(s=>'<li><span>'+esc(s)+'</span></li>').join('')+'</ol></section>';
+  return h+'<div class="two"><button class="btn" data-pref="'+rec.id+':1" aria-pressed="'+(pv===1)+'">'+SV(I.thumb)+'Sevdik</button><button class="btn" data-pref="'+rec.id+':-1" aria-pressed="'+(pv===-1)+'">'+SV(I.thumb,20,2,'flip')+'Sevmedik</button></div>'+
+    '<p class="note" style="text-align:center">İkinizin ortak tercihi: sevdikleriniz daha sık gelir, sevmedikleriniz yeni haftalara konmaz.</p>';
+}
+function emptyHTML(){
+  if(sync==='init')return '<p class="note" style="padding:24px 4px">Plan yükleniyor…</p>';
+  return '<header class="top"><div><span class="eyebrow">Beslenme planı</span><h1>Henüz plan yok</h1></div>'+syncSpan()+'</header>'+
+    '<section class="card pad"><p class="note">Menüyü hazırlayın; porsiyonlar ikinizin hedefine göre hesaplanır.</p><button class="btn primary big" id="wnew">'+SV(I.plus)+'Bu haftanın menüsünü hazırla</button></section>';
+}
+function render(){
+  const w=hist[cur],focus=document.activeElement&&document.activeElement.id;
+  $('tabs').innerHTML=tabsHTML();
+  if(!w){detail=null;$('view').innerHTML=tab==='prefs'?prefsHTML():emptyHTML();return}
+  const plans=build(w);
+  $('view').innerHTML=detail?detailHTML(w,plans):tab==='week'?weekHTML(w,plans):tab==='shop'?shopHTML(w,plans):tab==='prefs'?prefsHTML():todayHTML(w,plans);
+  if(!detail&&tab==='shop'){$('shoptxt').value=shopText(w,plans);
+    if(focus==='addn'||focus==='addq'){const e=$(focus);e.focus();e.setSelectionRange(e.value.length,e.value.length)}}
+}
+function setTab(t){tab=t;detail=null;editDays=null;confirmKey=null;lsSet('beslenme-tab',t);render();window.scrollTo({top:0});
+  if(t==='shop'&&!dirty){lastPoll=Date.now();pull()}} // diğer telefonun işaretlerini hemen al
+/* Yeniden oluştur / sil: ilk dokunuşta düğme "Emin misin?" olur, 4 sn içinde ikinci dokunuş onaylar. */
+let confirmKey=null;
+function arm(k){confirmKey=k;render();clearTimeout(arm.t);arm.t=setTimeout(()=>{if(confirmKey===k){confirmKey=null;render()}},4000)}
+function go(i){cur=i;day=defDay();confirmKey=null;editDays=null;detail=null;render()}
+/* Yeni hafta: bu hafta yoksa bu hafta, varsa gelecek hafta hazırlanır; en fazla 1 hafta ileriye. */
+function newWeek(){
+  window.scrollTo({top:0});
+  if(nextStart(hist)>addDays(thisMon(),7)){cur=hist.length-1;day=defDay();render();toast('Gelecek haftanın menüsü zaten hazır');return}
+  const w=generate(hist);hist.push(w);if(hist.length>26)hist.shift();cur=hist.indexOf(w);day=defDay();confirmKey=null;save();render();toast(weekLabel(w)+' hazır');
+}
 document.addEventListener('click',e=>{
-  const t=e.target,head=t.closest&&t.closest('.plan-head'),chead=t.closest&&t.closest('.card-head');
-  if(chead){const c=chead.parentNode,k=c.id,x=c.classList.toggle('closed');
-    chead.querySelector('.chev').setAttribute('aria-expanded',!x);
-    closed=x?[...closed,k]:closed.filter(v=>v!==k);lsSet('beslenme-closed',closed);return}
-  if(head){const a=head.parentNode,i=+a.dataset.plan,c=a.classList.toggle('closed');
-    head.querySelector('.chev').setAttribute('aria-expanded',!c);
-    closed=c?[...closed,i]:closed.filter(x=>x!==i);lsSet('beslenme-closed',closed);return}
-  if(t.closest&&t.closest('#wprev')){if(cur>0)go(cur-1)}
-  else if(t.closest&&t.closest('#wnext')){if(cur<hist.length-1)go(cur+1)}
-  else if(t.id==='wnow')go(pickCur());
-  else if(t.id==='wdays'){editDays=editDays?null:hist[cur].plans.map((p,i)=>daysOf(p,i).slice());render()}
-  else if(t.id==='dcancel'){editDays=null;render()}
-  else if(t.dataset&&t.dataset.dc){const[i,d]=t.dataset.dc.split(':').map(Number),o=editDays.findIndex(a=>a.includes(d));
+  const t=e.target,c=s=>t.closest?t.closest(s):null;let b;
+  if(b=c('[data-tab]')){setTab(b.dataset.tab);return}
+  if(b=c('[data-fold]')){toggleFold(b.dataset.fold);return}
+  if(b=c('[data-open]')){const[pi,k]=b.dataset.open.split(':');detail={pi:+pi,k,y:window.scrollY};editDays=null;confirmKey=null;render();window.scrollTo({top:0});return}
+  if(c('#back')){const y=detail?detail.y:0;detail=null;render();window.scrollTo({top:y});return}
+  if(b=c('[data-day]')){day=+b.dataset.day;render();return}
+  if(b=c('[data-goday]')){day=+b.dataset.goday;setTab('today');return}
+  if(c('[data-pdf]')){pdf();return}
+  if(c('[data-copy]')){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')});return}
+  if(b=c('[data-dc]')){const[i,d]=b.dataset.dc.split(':').map(Number),o=editDays.findIndex(a=>a.includes(d));
     if(o===i)return;
     if(editDays[o].length===1)return toast('BESLENME '+(o+1)+' en az 1 gün olmalı; önce ona başka bir gün verin');
     if(editDays[i].length===3)return toast('Bir BESLENME en fazla 3 gün olabilir');
-    editDays[o]=editDays[o].filter(x=>x!==d);editDays[i]=[...editDays[i],d].sort((a,b)=>a-b);render()}
-  else if(t.id==='dsave'){hist[cur].plans.forEach((p,i)=>{const a=editDays[i];if(a.join()===SLOTS[i].join())delete p.days;else p.days=a});
-    editDays=null;day=defDay();save();render();toast('Günler kaydedildi')}
-  else if(t.id==='wregen'){if(confirmKey!=='regen')return arm('regen');confirmKey=null;
-    const w=hist[cur];w.plans=generate(hist.slice(0,cur+1)).plans; // bu haftanın akşamları da "geçen hafta" sayılır, böylece farklı menü gelir
-    save();render();toast(weekLabel(w)+' menüsü yeniden oluşturuldu')}
-  else if(t.id==='wdel'){if(confirmKey!=='del')return arm('del');confirmKey=null;
-    const lbl=weekLabel(hist[cur]);hist.splice(cur,1);cur=pickCur();day=defDay();save();render();toast(lbl+' silindi')}
-  else if(t.dataset&&t.dataset.day!==undefined){day=t.dataset.day===''?null:+t.dataset.day;render()}
-  else if(t.dataset&&t.dataset.swap){const[i,k]=t.dataset.swap.split(':'),p=hist[cur].plans[+i],key=hist[cur].no+':'+t.dataset.swap,seen=swapSeen[key]||(swapSeen[key]=new Set());
+    editDays[o]=editDays[o].filter(x=>x!==d);editDays[i]=[...editDays[i],d].sort((a,b)=>a-b);render();return}
+  if(b=c('[data-swap]')){const[i,k]=b.dataset.swap.split(':'),p=hist[cur].plans[+i],key=hist[cur].no+':'+b.dataset.swap,seen=swapSeen[key]||(swapSeen[key]=new Set());
     seen.add(p[k]);const id=swapPick(hist,cur,+i,k,seen);if(!id){toast('Bu öğün için uygun başka tarif yok');return}
-    const old=ALL[p[k]].name;p[k]=id;if(p.x){delete p.x[k];if(!Object.keys(p.x).length)delete p.x}seen.add(id);save();render();toast(old+' → '+ALL[id].name)}
-  else if(t.closest&&t.closest('[data-pref]')){const[id,v]=t.closest('[data-pref]').dataset.pref.split(':'),n=+v,name=ALL[id].name;
+    const old=ALL[p[k]].name;p[k]=id;if(p.x){delete p.x[k];if(!Object.keys(p.x).length)delete p.x}seen.add(id);save();render();toast(old+' → '+ALL[id].name);return}
+  if(b=c('[data-pref]')){const[id,v]=b.dataset.pref.split(':'),n=+v,name=ALL[id].name;
     if(PREFS[id]===n){delete PREFS[id];toast(name+': tercih kaldırıldı')}
     else{PREFS[id]=n;toast(n===1?'👍 '+name+' daha sık gelecek':'👎 '+name+' bir daha önerilmeyecek'+(editable(hist[cur])?'. Bu haftadan çıkarmak için “Başka … getir”':''))}
-    save();render()}
-  else if(t.dataset&&t.dataset.unpref){const name=ALL[t.dataset.unpref].name;delete PREFS[t.dataset.unpref];save();render();toast(name+': tercih kaldırıldı')}
-  else if(t.dataset&&t.dataset.rm){const[pi,k,j]=t.dataset.rm.split(':'),p=hist[cur].plans[+pi],x=p.x||(p.x={}),a=x[k]||[],n=+j;
+    save();render();return}
+  if(b=c('[data-unpref]')){const name=ALL[b.dataset.unpref].name;delete PREFS[b.dataset.unpref];save();render();toast(name+': tercih kaldırıldı');return}
+  if(b=c('[data-rm]')){const[pi,k,j]=b.dataset.rm.split(':'),p=hist[cur].plans[+pi],x=p.x||(p.x={}),a=x[k]||[],n=+j;
     const row=build({plans:hist[cur].plans})[+pi].ing[k][n],name=F[row[0]].n.replace(/ \(.*\)/,'');
     const kc=v=>Math.round(F[row[0]].u==='adet'||F[row[0]].u==='ölçek'?F[row[0]].m[0]*v:F[row[0]].m[0]*v/100);
     if(a.includes(n)){x[k]=a.filter(v=>v!==n);toast(name+' geri eklendi')}
     else{x[k]=[...a,n].sort((u,v)=>u-v);toast(name+' çıkarıldı: günde Samet −'+kc(row[1])+' kcal, Raşe −'+kc(row[2])+' kcal')}
     if(!x[k].length)delete x[k];if(!Object.keys(x).length)delete p.x;
-    save();render()}
-  else if(t.dataset&&t.dataset.ck!==undefined)check(t.dataset.ck,t.checked);
-  else if(t.dataset&&t.dataset.del){const x=(hist[cur].extra||[]).find(e=>e.k===t.dataset.del);doOp({t:'del',k:t.dataset.del});if(x)toast(x.n+' listeden silindi')}
-  else if(t.dataset&&t.dataset.qty){const v=prompt('Alınacak miktar (ör. 2 paket, 1 kg). Boş bırakırsanız hesaplanan miktara döner:',t.dataset.cur);
-    if(v!==null){const q=v.trim().slice(0,40);doOp({t:'qty',k:t.dataset.qty,v:q});toast(q?'Miktar düzeltildi: '+q:'Hesaplanan miktara dönüldü')}}
-  else if(t.id==='ckclear'){const w=hist[cur],n=(w.done||[]).length;
+    save();render();return}
+  if(t.dataset&&t.dataset.ck!==undefined){check(t.dataset.ck,t.checked);return}
+  if(b=c('[data-del]')){const x=(hist[cur].extra||[]).find(e=>e.k===b.dataset.del);doOp({t:'del',k:b.dataset.del});if(x)toast(x.n+' listeden silindi');return}
+  if(b=c('[data-qty]')){const v=prompt('Alınacak miktar (ör. 2 paket, 1 kg). Boş bırakırsanız hesaplanan miktara döner:',b.dataset.cur);
+    if(v!==null){const q=v.trim().slice(0,40);doOp({t:'qty',k:b.dataset.qty,v:q});toast(q?'Miktar düzeltildi: '+q:'Hesaplanan miktara dönüldü')}return}
+  const id=(c('button[id]')||{}).id;
+  if(id==='wprev'){if(cur>0)go(cur-1)}
+  else if(id==='wnext'){if(cur<hist.length-1)go(cur+1)}
+  else if(id==='wnow')go(pickCur());
+  else if(id==='wnew')newWeek();
+  else if(id==='wdays'){editDays=editDays?null:hist[cur].plans.map((p,i)=>daysOf(p,i).slice());render()}
+  else if(id==='dcancel'){editDays=null;render()}
+  else if(id==='dsave'){hist[cur].plans.forEach((p,i)=>{const a=editDays[i];if(a.join()===SLOTS[i].join())delete p.days;else p.days=a});
+    editDays=null;day=defDay();save();render();toast('Günler kaydedildi')}
+  else if(id==='wregen'){if(confirmKey!=='regen')return arm('regen');confirmKey=null;
+    const w=hist[cur];w.plans=generate(hist.slice(0,cur+1)).plans; // bu haftanın akşamları da "geçen hafta" sayılır, böylece farklı menü gelir
+    save();render();toast(weekLabel(w)+' menüsü yeniden oluşturuldu')}
+  else if(id==='wdel'){if(confirmKey!=='del')return arm('del');confirmKey=null;
+    const lbl=weekLabel(hist[cur]);hist.splice(cur,1);cur=pickCur();day=defDay();detail=null;save();render();toast(lbl+' silindi')}
+  else if(id==='ckclear'){const w=hist[cur],n=(w.done||[]).length;
     if(n&&confirm('Emin misiniz? '+n+' kalemin işareti kaldırılacak. Bu, iki telefonda da geçerli olur.')){w.done.slice().forEach(k=>check(k,false));toast('İşaretler temizlendi')}}
-  else if(t.id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
-  else if(t.id==='copy'){const ta=$('shoptxt');(navigator.clipboard?navigator.clipboard.writeText(ta.value):Promise.reject()).then(()=>toast('Liste kopyalandı')).catch(()=>{ta.focus();ta.select();toast('Metin seçildi, Kopyala’ya basın')})}
+  else if(id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
+  else if(id==='pdfClose')$('pdfhelp').hidden=true;
 });
+/* ===== YAZDIRMA: tüm hafta (öğün tabloları + besin değerleri + market listesi) #print'e yazılır ===== */
+function printHTML(w,plans){
+  let h='<h1>'+esc(weekLabel(w))+' – Samet &amp; Raşe Beslenme Planı</h1><p class="note">Samet: '+T.s.lo+'–'+T.s.hi+' kcal, en az '+T.s.pmin+' g protein · Raşe: '+T.r.lo+'–'+T.r.hi+' kcal, 95–110 g protein</p>';
+  plans.forEach((p,i)=>{h+='<h2>BESLENME '+(i+1)+' – '+dayText(p.days)+' ('+p.days.length+' gün)</h2>';
+    ['b','s','d'].forEach(k=>{const rec=recOf(p,k),ing=p.ing[k].filter(x=>!x[4]),ms=mac(ing,1),mr=mac(ing,2),n=p.days.length;
+      h+='<div class="pm"><h3>'+KL[k]+': '+esc(rec.name)+'</h3><table><thead><tr><th>Malzeme</th><th>Samet</th><th>Raşe</th></tr></thead><tbody>'+
+        ing.map(x=>'<tr><td>'+esc(F[x[0]].n)+'</td><td>'+amt(x[0],x[1])+'</td><td>'+amt(x[0],x[2])+'</td></tr>').join('')+
+        '<tr><td>Öğün toplamı</td><td>'+r0(ms[0])+' kcal · '+r0(ms[1])+' g P</td><td>'+r0(mr[0])+' kcal · '+r0(mr[1])+' g P</td></tr></tbody></table><ol>'+rec.steps.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>'+
+        (k==='d'&&n>1?'<p class="note"><b>'+(isZ(rec)?n+' gün için toplam (2 kişi):':'Tencereye girecek toplam (2 kişi × '+n+' gün):')+'</b> '+batchOf(p.ing[k],n).map(([a,b])=>esc(a)+' '+b).join(' · ')+'</p>':'')+'</div>'})});
+  h+='<div class="pb"><h1>Günlük besin değerleri</h1>'+nutriHTML(plans)+'</div>';
+  const sh=shopping(plans),done=w.done||[],qty=w.qty||{},li=x=>'<li>'+(done.includes(x.k)?'☑':'☐')+' '+esc(x.n)+(qty[x.k]||x.buy?' — '+esc(qty[x.k]||x.buy):'')+(x.need&&!qty[x.k]?' ('+x.need+')':'')+'</li>';
+  h+='<div class="pb"><h1>'+rangeLabel(w.start)+' – Market alışveriş listesi</h1>';
+  if((w.extra||[]).length)h+='<h2>'+EXL+'</h2><ul>'+w.extra.map(li).join('')+'</ul>';
+  SECS.forEach(([k])=>{if(sh[k].length)h+='<h2>'+SECL[k]+'</h2><ul>'+sh[k].map(li).join('')+'</ul>'});
+  return h+'</div>';
+}
 /* iOS ana ekran uygulamasında window.print() hiçbir şey yapmaz: sayfayı ?pdf=1 ile Safari'de açtırıp orada yazdırırız. */
-function printNow(){shopOpen=true;render();setTimeout(()=>window.print(),50)}
-$('btnPdf').onclick=()=>{
+function printNow(){const w=hist[cur];if(!w)return;$('print').innerHTML=printHTML(w,build(w));setTimeout(()=>window.print(),50)}
+function pdf(){
   if(navigator.standalone!==true)return printNow();
   const u=location.origin+location.pathname+'?pdf=1';
   $('pdfSafari').href='x-safari-'+u;$('pdfAlt').href=u;$('pdfhelp').hidden=false;window.scrollTo({top:0});
-};
-$('pdfClose').onclick=()=>{$('pdfhelp').hidden=true};
+}
 const wantPdf=new URLSearchParams(location.search).has('pdf');
 if(wantPdf)history.replaceState(null,'',location.pathname); // yenileyince tekrar yazdırmasın
-if(hist.length){cur=pickCur();day=defDay();render()}else $('menu').innerHTML='<p class="note">Plan yükleniyor…</p>';
-pull().then(()=>{if(!hist.length&&!ver){hist.push(generate([]));cur=0;day=defDay();save();render()} // ilk kurulum
-  else if(!hist.length)render();
-  if(wantPdf){toast('Yazdırma penceresi açılmazsa PDF Olarak İndir’e dokunun');printNow()}}); // sunucudaki güncel plan geldikten sonra yazdır
+if(hist.length){cur=pickCur();day=defDay()}
+render();
+pull().then(()=>{if(!hist.length&&!ver){hist.push(generate([]));cur=0;day=defDay();save()} // ilk kurulum
+  render();
+  if(wantPdf){toast('Yazdırma penceresi açılmazsa PDF olarak indir’e dokunun');printNow()}}); // sunucudaki güncel plan geldikten sonra yazdır
 addEventListener('online',()=>{if(dirty)push()});
 /* Market listesine ürün ekleme formu */
 document.addEventListener('input',e=>{if(e.target.id==='addn')addDraft.n=e.target.value;else if(e.target.id==='addq')addDraft.q=e.target.value});
@@ -876,9 +1081,9 @@ document.addEventListener('submit',e=>{if(e.target.id!=='addform')return;e.preve
   const n=addDraft.n.trim().slice(0,60),q=addDraft.q.trim().slice(0,40);if(!n){$('addn').focus();return}
   if((hist[cur].extra||[]).length>=60)return toast('Bir haftaya en fazla 60 ürün eklenebilir');
   addDraft={n:'',q:''};doOp({t:'add',k:'u_'+Date.now().toString(36).slice(-7)+Math.random().toString(36).slice(2,5),n,q});toast(n+' listeye eklendi');$('addn').focus()});
-/* Diğer telefondaki değişiklikleri getir: market listesi açıkken 5 sn'de, değilse 60 sn'de bir; sekme görünürken. */
+/* Diğer telefondaki değişiklikleri getir: Market sekmesi açıkken 5 sn'de, değilse 60 sn'de bir; sekme görünürken. */
 let lastPoll=Date.now();
-const shopInView=()=>{if(!shopOpen)return false;const r=$('shop').getBoundingClientRect();return r.bottom>0&&r.top<innerHeight};
+const shopInView=()=>tab==='shop'&&!detail;
 setInterval(()=>{if(document.hidden||dirty||!shopInView()&&Date.now()-lastPoll<60000)return;lastPoll=Date.now();pull()},5000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!dirty){lastPoll=Date.now();pull()}});
 /* Aşağı çekip yenile: tarayıcılar bunu kendisi yapar, yalnızca ana ekran uygulamasında (standalone) etkin. */
