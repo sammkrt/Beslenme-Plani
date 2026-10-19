@@ -6,7 +6,7 @@
                       prefs = {tarifId: 1 (sevdik) | -1 (sevmedik)}; gönderilmezse kayıtlı tercihler korunur.
                       base, sunucudaki v ile aynı değilse 409 + güncel durum döner. */
 
-const MAX_BODY = 100_000;
+const MAX_BODY = 250_000; // 26 hafta + en fazla 60 kendi tarifi
 const ID = /^[a-z0-9_-]{1,24}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const GRAIN = /^[a-z]{1,16}$/;
