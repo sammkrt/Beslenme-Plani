@@ -13,9 +13,10 @@ Tarif eklemek için `index.html` içindeki `B` (kahvaltı), `S` (ara öğün), `
 
 Geçmiş haftalar `server/` klasöründeki Cloudflare Worker üzerinden ücretsiz bir D1 (SQLite) veritabanında tutulur; böylece her cihaz aynı planı görür. Tarayıcıdaki `localStorage` yalnızca çevrimdışı önbellektir: sunucuya ulaşılamazsa son kopya gösterilir, bağlantı gelince eşitlenir.
 
-- Okuma herkese açıktır; yazmak için ortak PIN gerekir. Her cihazda bir kez **PIN gir** düğmesiyle girilir.
+- Okumak ve yazmak için ortak PIN gerekir. Her cihazda bir kez **PIN gir** düğmesiyle girilir. Aynı IP'den 15 dakikada 10 hatalı deneme olursa o IP 15 dakika kilitlenir (`pin_fail` tablosu).
 - PIN depoda değil, yalnızca Cloudflare'de gizli değişken (`PIN`) olarak durur.
-- İki cihaz aynı anda değişiklik yaparsa sunucudaki sürüm geçerli olur (sürüm kontrolü ile).
+- Her değişiklik bir işlem olarak tutulur. İki cihaz aynı anda değişiklik yaparsa (sürüm kontrolü 409 döner) bekleyen işlemler sunucudaki güncel sürümün üzerine yeniden uygulanır; kimsenin değişikliği kaybolmaz.
+- `sw.js` (service worker) sayfayı önbelleğe alır: bağlantı yoksa ya da 4 sn içinde gelmezse son kopya açılır.
 - Haftalar takvime bağlıdır (her hafta bir pazartesi başlar, `start` alanı). Geçmiş haftalar salt okunurdur; yalnızca bu hafta ve gelecek hafta yeniden oluşturulabilir ya da silinebilir.
 - Her kayıttan önce bir önceki durum `state_backup` tablosuna kopyalanır (son 200 sürüm). Geri yüklemek için:
 
@@ -33,7 +34,7 @@ cd server
 npm install
 npx wrangler login                  # Cloudflare hesabıyla giriş
 npx wrangler d1 create beslenme     # çıkan database_id'yi wrangler.toml'a yazın
-npm run db:remote                   # tabloyu oluşturur
+npm run db:remote                   # tabloları oluşturur (yeni tablo eklenince yeniden çalıştırın; mevcut veriye dokunmaz)
 npx wrangler secret put PIN         # ortak PIN'i girin
 npm run deploy
 ```

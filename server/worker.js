@@ -1,7 +1,8 @@
 /* Beslenme Planı API — Cloudflare Worker + D1.
    Tek satırlık durum: {hist, custom} JSON'u ve sürüm numarası v.
-   GET  /api/state  → {v, hist, custom, prefs, updated}  (herkese açık okuma)
+   GET  /api/state  → {v, hist, custom, prefs, updated}  (X-Pin başlığı zorunlu)
    PUT  /api/state  → gövde {base, hist, custom, prefs?}, X-Pin başlığı zorunlu.
+   Hatalı PIN IP başına sayılır: MAX_FAILS hata FAIL_WINDOW içinde olursa o IP pencere bitene kadar 429 alır.
                       prefs = {tarifId: 1 (sevdik) | -1 (sevmedik)}; gönderilmezse kayıtlı tercihler korunur.
                       base, sunucudaki v ile aynı değilse 409 + güncel durum döner. */
 
@@ -31,6 +32,7 @@ const validX = x => x && typeof x === 'object' && !Array.isArray(x) &&
   Object.entries(x).every(([k, a]) => ['b', 's', 'd'].includes(k) && Array.isArray(a) && a.length <= 30 &&
     a.every(n => Number.isInteger(n) && n >= 0 && n < 30));
 const KEEP_BACKUPS = 200;
+const MAX_FAILS = 10, FAIL_WINDOW = 15 * 60 * 1000;
 
 function cors(req, env) {
   const origin = req.headers.get('Origin') || '';
@@ -66,6 +68,24 @@ async function pinOk(given, expected) {
   return d === 0;
 }
 
+/* PIN kontrolü + kaba kuvvet sınırı (pin_fail tablosu). Başarılı girişte o IP'nin sayacı silinir.
+   Dönüş: null = geçti, yoksa gönderilecek hata yanıtı. */
+async function guard(req, env) {
+  const ip = req.headers.get('CF-Connecting-IP') || 'unknown', now = Date.now();
+  const row = await env.DB.prepare('SELECT n, first FROM pin_fail WHERE ip = ?').bind(ip).first();
+  const fresh = row && now - Date.parse(row.first) < FAIL_WINDOW;
+  if (fresh && row.n >= MAX_FAILS) return json({ error: 'locked' }, 429, req, env);
+  if (await pinOk(req.headers.get('X-Pin'), env.PIN)) {
+    if (row) await env.DB.prepare('DELETE FROM pin_fail WHERE ip = ?').bind(ip).run();
+    return null;
+  }
+  await (fresh
+    ? env.DB.prepare('UPDATE pin_fail SET n = n + 1 WHERE ip = ?').bind(ip)
+    : env.DB.prepare('INSERT INTO pin_fail (ip, n, first) VALUES (?1, 1, ?2) ON CONFLICT(ip) DO UPDATE SET n = 1, first = ?2').bind(ip, new Date(now).toISOString())).run();
+  await new Promise(r => setTimeout(r, 400)); // kaba kuvvet denemelerini yavaşlat
+  return json({ error: 'pin' }, 401, req, env);
+}
+
 /* Yalnızca uygulamanın ürettiği şekli kabul eder; tarif içeriğinin doğrulaması istemcide (validRecipe) yapılır. */
 function validState(s) {
   if (!s || !Array.isArray(s.hist) || !Array.isArray(s.custom)) return false;
@@ -98,13 +118,13 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req, env) });
     if (url.pathname !== '/api/state') return json({ error: 'not_found' }, 404, req, env);
 
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'PUT') return json({ error: 'method' }, 405, req, env);
+    const denied = await guard(req, env);
+    if (denied) return denied;
+
     if (req.method === 'GET' || req.method === 'HEAD') return json(await readState(env), 200, req, env);
 
     if (req.method === 'PUT') {
-      if (!(await pinOk(req.headers.get('X-Pin'), env.PIN))) {
-        await new Promise(r => setTimeout(r, 400)); // kaba kuvvet denemelerini yavaşlat
-        return json({ error: 'pin' }, 401, req, env);
-      }
       const text = await req.text();
       if (text.length > MAX_BODY) return json({ error: 'too_large' }, 413, req, env);
       let body;

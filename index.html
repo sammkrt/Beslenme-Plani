@@ -684,18 +684,32 @@ function loadPrefs(o){Object.keys(PREFS).forEach(k=>delete PREFS[k]);if(o&&typeo
 loadPrefs(lsGet('beslenme-prefs',{}));
 {const h=lsGet('beslenme-hist',[]);if(validHist(h)){hist=h;if(datedHist(hist))dirty=true}} // eski 'Hafta 5' kayıtları tarihe taşınır
 function saveLocal(){lsSet('beslenme-hist',hist);lsSet('beslenme-custom',custom);lsSet('beslenme-prefs',PREFS);lsSet('beslenme-ver',ver);lsSet('beslenme-dirty',dirty)}
-function save(){seq++;dirty=true;otherDirty=true;saveLocal();push()}
-/* Market işaretleri iki telefondan aynı anda değişebilir: her işaret bir işlem olarak tutulur ve
-   sunucuda daha yeni bir sürüm varsa onun üzerine yeniden uygulanır (kimsenin işareti kaybolmaz). */
-let pendingOps=[],otherDirty=false,seq=0; // seq: her değişiklikte artar; gönderim sırasında yeni değişiklik olduysa kirli kalır
-function applyOp(o){const w=hist.find(x=>x.start===o.start);if(!w)return;
+/* Her değişiklik bir işlem (op) olarak tutulur ve sunucuda daha yeni bir sürüm varsa (başka telefon kaydetmişse)
+   onun üzerine yeniden uygulanır; böylece iki telefon aynı anda değişiklik yapsa da kimsenin değişikliği kaybolmaz.
+   İşlemler haftayı start ile bulur ve tekrar uygulanınca aynı sonucu verir. */
+let pendingOps=[],seq=0; // seq: her değişiklikte artar; gönderim sırasında yeni değişiklik olduysa kirli kalır
+const clone=o=>JSON.parse(JSON.stringify(o));
+function applyOp(o){
+  if(o.t==='pref'){if(o.v)PREFS[o.id]=o.v;else delete PREFS[o.id];return}
+  if(o.t==='new'){if(!hist.some(x=>x.start===o.w.start)){hist.push(clone(o.w));hist.sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0);if(hist.length>26)hist.shift()}return}
+  const w=hist.find(x=>x.start===o.start);if(!w)return; // hafta başka telefonda silinmişse işlem düşer
+  if(o.t==='wdel'){hist.splice(hist.indexOf(w),1);return}
+  if(o.t==='regen'){w.plans=clone(o.plans);const own=new Set((w.extra||[]).map(x=>x.k)); // yeni menü: hesaplanan ürünlerin işaretleri ve elle miktarları sıfırlanır, elle eklenen ürünler kalır
+    if(w.done){w.done=w.done.filter(k=>own.has(k));if(!w.done.length)delete w.done}
+    if(w.qty){Object.keys(w.qty).forEach(k=>{if(!own.has(k))delete w.qty[k]});if(!Object.keys(w.qty).length)delete w.qty}return}
+  if(o.t==='days'){w.plans.forEach((p,i)=>{const a=o.days[i];if(!a||a.join()===SLOTS[i].join())delete p.days;else p.days=a.slice()});if(!validDays(w.plans))w.plans.forEach(p=>delete p.days);return}
+  if(o.t==='swap'||o.t==='rm'){const p=w.plans[o.i];if(!p)return;
+    if(o.t==='swap'){p[o.k]=o.id;if(p.x){delete p.x[o.k];if(!Object.keys(p.x).length)delete p.x}return}
+    const x=p.x||{},a=new Set(x[o.k]||[]);o.on?a.add(o.j):a.delete(o.j); // on = malzeme çıkarıldı
+    if(a.size)x[o.k]=[...a].sort((u,v)=>u-v);else delete x[o.k];if(Object.keys(x).length)p.x=x;else delete p.x;return}
   if(o.t==='add'){if(!(w.extra||[]).some(x=>x.k===o.k))w.extra=[...(w.extra||[]),{k:o.k,n:o.n}];if(o.q)w.qty={...(w.qty||{}),[o.k]:o.q};return}
   if(o.t==='del'){w.extra=(w.extra||[]).filter(x=>x.k!==o.k);if(!w.extra.length)delete w.extra;
     if(w.qty){delete w.qty[o.k];if(!Object.keys(w.qty).length)delete w.qty}
     if(w.done){w.done=w.done.filter(k=>k!==o.k);if(!w.done.length)delete w.done}return}
   if(o.t==='qty'){const q={...(w.qty||{})};if(o.v)q[o.k]=o.v;else delete q[o.k];if(Object.keys(q).length)w.qty=q;else delete w.qty;return} // elle yazılan miktar ('' = hesaplanana dön)
   const a=new Set(w.done||[]);o.on?a.add(o.k):a.delete(o.k);if(a.size)w.done=[...a];else delete w.done}
-function doOp(o){o.start=hist[cur].start;pendingOps.push(o);applyOp(o);seq++;dirty=true;saveLocal();render();push()}
+/* after: işlem uygulandıktan sonra, çizimden önce çalışır (ör. açık haftayı değiştirmek için). */
+function doOp(o,after){if(o.start===undefined&&o.t!=='pref'&&o.t!=='new')o.start=hist[cur].start;pendingOps.push(o);applyOp(o);if(after)after();seq++;dirty=true;saveLocal();render();push()}
 const check=(k,on)=>doOp({k,on});
 /* ===== SİMGELER: 24×24 çizgi simgeler ===== */
 const SV=(d,s=20,w=2,cls)=>'<svg'+(cls?' class="'+cls+'"':'')+' width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+w+'" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
@@ -724,7 +738,8 @@ const I={
 };
 /* Eşitleme durumu: [kısa etiket, rozet sınıfı, simge, açıklama]. Rozete dokununca Tercihler (PIN) açılır. */
 const SYNC={init:['Eşitleniyor…','idle',I.cloud,'Sunucuyla eşitleniyor…'],ok:['Eşitlendi','',I.cloud,'☁︎ Bulutla eşitlendi.'],
-  nopin:['Salt okunur','bad',I.key,'Salt okunur: kaydetmek için PIN girin.'],badpin:['PIN hatalı','bad',I.key,'PIN hatalı; doğru PIN’i girin.'],
+  nopin:['PIN gerekli','bad',I.key,'Planı görmek ve kaydetmek için ortak PIN’i girin.'],badpin:['PIN hatalı','bad',I.key,'PIN hatalı; doğru PIN’i girin.'],
+  locked:['Çok deneme','bad',I.key,'Çok fazla hatalı PIN denemesi; 15 dakika sonra tekrar deneyin.'],
   off:['Çevrimdışı','bad',I.cloudOff,'Çevrimdışı: bu cihazdaki kopya gösteriliyor, bağlantı gelince eşitlenir.']};
 function syncSpan(){const s=SYNC[sync];return '<button id="sync" class="pill '+s[1]+'" data-tab="prefs" title="'+s[3]+'">'+SV(s[2],16)+s[0]+'</button>'}
 function setSync(s){sync=s;const el=$('sync');if(el)el.outerHTML=syncSpan();const l=$('synclong');if(l)l.textContent=SYNC[s][3]}
@@ -734,8 +749,8 @@ function adopt(d){
   if(!validHist(d.hist)){custom=keep;return false} // boş liste de geçerli: tüm haftalar silinmiş olabilir
   const was=hist[cur]&&hist[cur].start;                       // açık olan haftada kal (arka plan eşitlemesi ekranı zıplatmasın)
   loadPrefs(d.prefs);hist=d.hist;ver=d.v;dirty=datedHist(hist);
-  const i=hist.findIndex(w=>w.start===was);if(i>=0)cur=i;else{cur=pickCur();day=defDay();editDays=null;detail=null}
   if(pendingOps.length){pendingOps.forEach(applyOp);dirty=true}
+  const i=hist.findIndex(w=>w.start===was);if(i>=0)cur=i;else{cur=pickCur();day=defDay();editDays=null;detail=null}
   saveLocal();render();if(dirty)push();return true;
 }
 const today=()=>(new Date().getDay()+6)%7; // Pazartesi = 0
@@ -766,24 +781,30 @@ async function doPush(){
   try{
     const r=await fetch(API+'/api/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Pin':pin},body:JSON.stringify({base:ver,hist,custom,prefs:PREFS})});
     if(r.status===401){setSync('badpin');return}
+    if(r.status===429){setSync('locked');return}
     const d=await r.json();
-    if(r.status===409){const lost=otherDirty;if(adopt(d)&&lost)toast('Başka cihazda değişiklik vardı; güncel plan yüklendi');otherDirty=false;setSync('ok');return}
+    if(r.status===409){adopt(d);setSync('ok');return} // adopt bekleyen işlemleri güncel sürüme uygulayıp yeniden gönderir
     if(!r.ok)throw new Error(r.status);
     ver=d.v;pendingOps=pendingOps.slice(n0);
-    if(seq===s0){dirty=false;otherDirty=false}else push(); // gönderim sürerken yapılan değişiklikler de gitsin
+    if(seq===s0)dirty=false;else push(); // gönderim sürerken yapılan değişiklikler de gitsin
     saveLocal();setSync('ok');
   }catch(e){setSync('off')}
 }
+/* Okuma da PIN ister. Sunucu boşsa 'empty' döner (ilk kurulum). */
 async function pull(){
   try{
-    const r=await fetch(API+'/api/state',{cache:'no-store'});if(!r.ok)throw new Error(r.status);
+    const r=await fetch(API+'/api/state',{cache:'no-store',headers:pin?{'X-Pin':pin}:{}});
+    if(r.status===401){setSync(pin?'badpin':'nopin');return}
+    if(r.status===429){setSync('locked');return}
+    if(!r.ok)throw new Error(r.status);
     const d=await r.json();
-    if(d.v===0){ver=0;if(hist.length){dirty=true;saveLocal();await push()}return}   // sunucu boş: bu cihazdaki geçmişi yükle
+    if(d.v===0){ver=0;if(hist.length){dirty=true;saveLocal();await push()}else setSync('ok');return 'empty'}   // sunucu boş: bu cihazdaki geçmişi yükle
     if(d.v===ver){if(dirty)await push();else setSync(pin?'ok':'nopin');return} // sunucuda yenilik yok
-    const lost=otherDirty&&d.v!==ver;
-    if(adopt(d)){otherDirty=false;setSync(pin?'ok':'nopin');if(lost)toast('Başka cihazda değişiklik vardı; bu cihazdaki kaydedilmemiş değişiklik yerine güncel plan yüklendi')}
+    if(adopt(d))setSync(pin?'ok':'nopin');
   }catch(e){setSync('off')}
 }
+/* İlk kurulum: sunucu boşsa ve bu cihazda da plan yoksa bu haftanın menüsü hazırlanır. */
+function firstRun(r){if(r==='empty'&&!hist.length)doOp({t:'new',w:generate([])},()=>{cur=0;day=defDay()})}
 function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,3200)}
 const amt=(k,v)=>{if(!v)return '—';const u=F[k].u||'g';return nf(v)+' '+u};
 const r0=v=>Math.round(v),fmt=v=>Math.round(v).toLocaleString('tr-TR');
@@ -967,6 +988,8 @@ function detailHTML(w,plans){
 }
 function emptyHTML(){
   if(sync==='init')return '<p class="note" style="padding:24px 4px">Plan yükleniyor…</p>';
+  if(sync==='nopin'||sync==='badpin'||sync==='locked')return '<header class="top"><div><span class="eyebrow">Samet &amp; Raşe</span><h1>Beslenme planı</h1></div>'+syncSpan()+'</header>'+
+    '<section class="card pad"><p id="synclong">'+SYNC[sync][3]+'</p><p class="note">PIN her cihazda bir kez girilir.</p><button class="btn primary big" id="pin">'+SV(I.key)+'PIN gir</button></section>';
   return '<header class="top"><div><span class="eyebrow">Beslenme planı</span><h1>Henüz plan yok</h1></div>'+syncSpan()+'</header>'+
     '<section class="card pad"><p class="note">Menüyü hazırlayın; porsiyonlar ikinizin hedefine göre hesaplanır.</p><button class="btn primary big" id="wnew">'+SV(I.plus)+'Bu haftanın menüsünü hazırla</button></section>';
 }
@@ -980,7 +1003,7 @@ function render(){
     if(focus==='addn'||focus==='addq'){const e=$(focus);e.focus();e.setSelectionRange(e.value.length,e.value.length)}}
 }
 function setTab(t){tab=t;detail=null;editDays=null;confirmKey=null;lsSet('beslenme-tab',t);render();window.scrollTo({top:0});
-  if(t==='shop'&&!dirty){lastPoll=Date.now();pull()}} // diğer telefonun işaretlerini hemen al
+  if(t==='shop'&&canPoll()){lastPoll=Date.now();pull()}} // diğer telefonun işaretlerini hemen al
 /* Yeniden oluştur / sil: ilk dokunuşta düğme "Emin misin?" olur, 4 sn içinde ikinci dokunuş onaylar. */
 let confirmKey=null;
 function arm(k){confirmKey=k;render();clearTimeout(arm.t);arm.t=setTimeout(()=>{if(confirmKey===k){confirmKey=null;render()}},4000)}
@@ -989,7 +1012,7 @@ function go(i){cur=i;day=defDay();confirmKey=null;editDays=null;detail=null;rend
 function newWeek(){
   window.scrollTo({top:0});
   if(nextStart(hist)>addDays(thisMon(),7)){cur=hist.length-1;day=defDay();render();toast('Gelecek haftanın menüsü zaten hazır');return}
-  const w=generate(hist);hist.push(w);if(hist.length>26)hist.shift();cur=hist.indexOf(w);day=defDay();confirmKey=null;save();render();toast(weekLabel(w)+' hazır');
+  const w=generate(hist);confirmKey=null;doOp({t:'new',w},()=>{cur=hist.findIndex(x=>x.start===w.start);day=defDay()});toast(weekLabel(w)+' hazır');
 }
 document.addEventListener('click',e=>{
   const t=e.target,c=s=>t.closest?t.closest(s):null;let b;
@@ -1008,19 +1031,16 @@ document.addEventListener('click',e=>{
     editDays[o]=editDays[o].filter(x=>x!==d);editDays[i]=[...editDays[i],d].sort((a,b)=>a-b);render();return}
   if(b=c('[data-swap]')){const[i,k]=b.dataset.swap.split(':'),p=hist[cur].plans[+i],key=hist[cur].no+':'+b.dataset.swap,seen=swapSeen[key]||(swapSeen[key]=new Set());
     seen.add(p[k]);const id=swapPick(hist,cur,+i,k,seen);if(!id){toast('Bu öğün için uygun başka tarif yok');return}
-    const old=ALL[p[k]].name;p[k]=id;if(p.x){delete p.x[k];if(!Object.keys(p.x).length)delete p.x}seen.add(id);save();render();toast(old+' → '+ALL[id].name);return}
+    const old=ALL[p[k]].name;seen.add(id);doOp({t:'swap',i:+i,k,id});toast(old+' → '+ALL[id].name);return}
   if(b=c('[data-pref]')){const[id,v]=b.dataset.pref.split(':'),n=+v,name=ALL[id].name;
-    if(PREFS[id]===n){delete PREFS[id];toast(name+': tercih kaldırıldı')}
-    else{PREFS[id]=n;toast(n===1?'👍 '+name+' daha sık gelecek':'👎 '+name+' bir daha önerilmeyecek'+(editable(hist[cur])?'. Bu haftadan çıkarmak için “Başka … getir”':''))}
-    save();render();return}
-  if(b=c('[data-unpref]')){const name=ALL[b.dataset.unpref].name;delete PREFS[b.dataset.unpref];save();render();toast(name+': tercih kaldırıldı');return}
-  if(b=c('[data-rm]')){const[pi,k,j]=b.dataset.rm.split(':'),p=hist[cur].plans[+pi],x=p.x||(p.x={}),a=x[k]||[],n=+j;
+    if(PREFS[id]===n){doOp({t:'pref',id,v:0});toast(name+': tercih kaldırıldı')}
+    else{doOp({t:'pref',id,v:n});toast(n===1?'👍 '+name+' daha sık gelecek':'👎 '+name+' bir daha önerilmeyecek'+(editable(hist[cur])?'. Bu haftadan çıkarmak için “Başka … getir”':''))}
+    return}
+  if(b=c('[data-unpref]')){const name=ALL[b.dataset.unpref].name;doOp({t:'pref',id:b.dataset.unpref,v:0});toast(name+': tercih kaldırıldı');return}
+  if(b=c('[data-rm]')){const[pi,k,j]=b.dataset.rm.split(':'),p=hist[cur].plans[+pi],n=+j,on=!((p.x&&p.x[k])||[]).includes(n);
     const row=build({plans:hist[cur].plans})[+pi].ing[k][n],name=F[row[0]].n.replace(/ \(.*\)/,'');
     const kc=v=>Math.round(F[row[0]].u==='adet'||F[row[0]].u==='ölçek'?F[row[0]].m[0]*v:F[row[0]].m[0]*v/100);
-    if(a.includes(n)){x[k]=a.filter(v=>v!==n);toast(name+' geri eklendi')}
-    else{x[k]=[...a,n].sort((u,v)=>u-v);toast(name+' çıkarıldı: günde Samet −'+kc(row[1])+' kcal, Raşe −'+kc(row[2])+' kcal')}
-    if(!x[k].length)delete x[k];if(!Object.keys(x).length)delete p.x;
-    save();render();return}
+    doOp({t:'rm',i:+pi,k,j:n,on});toast(on?name+' çıkarıldı: günde Samet −'+kc(row[1])+' kcal, Raşe −'+kc(row[2])+' kcal':name+' geri eklendi');return}
   if(t.dataset&&t.dataset.ck!==undefined){check(t.dataset.ck,t.checked);return}
   if(b=c('[data-del]')){const x=(hist[cur].extra||[]).find(e=>e.k===b.dataset.del);doOp({t:'del',k:b.dataset.del});if(x)toast(x.n+' listeden silindi');return}
   if(b=c('[data-qty]')){const v=prompt('Alınacak miktar (ör. 2 paket, 1 kg). Boş bırakırsanız hesaplanan miktara döner:',b.dataset.cur);
@@ -1032,16 +1052,16 @@ document.addEventListener('click',e=>{
   else if(id==='wnew')newWeek();
   else if(id==='wdays'){editDays=editDays?null:hist[cur].plans.map((p,i)=>daysOf(p,i).slice());render()}
   else if(id==='dcancel'){editDays=null;render()}
-  else if(id==='dsave'){hist[cur].plans.forEach((p,i)=>{const a=editDays[i];if(a.join()===SLOTS[i].join())delete p.days;else p.days=a});
-    editDays=null;day=defDay();save();render();toast('Günler kaydedildi')}
+  else if(id==='dsave'){const days=editDays;editDays=null;doOp({t:'days',days},()=>{day=defDay()});toast('Günler kaydedildi')}
   else if(id==='wregen'){if(confirmKey!=='regen')return arm('regen');confirmKey=null;
-    const w=hist[cur];w.plans=generate(hist.slice(0,cur+1)).plans; // bu haftanın akşamları da "geçen hafta" sayılır, böylece farklı menü gelir
-    save();render();toast(weekLabel(w)+' menüsü yeniden oluşturuldu')}
+    const w=hist[cur],marked=(w.done||[]).length;doOp({t:'regen',plans:generate(hist.slice(0,cur+1)).plans}); // bu haftanın akşamları da "geçen hafta" sayılır, böylece farklı menü gelir
+    toast(weekLabel(w)+' menüsü yeniden oluşturuldu'+(marked?'; market işaretleri sıfırlandı':''))}
   else if(id==='wdel'){if(confirmKey!=='del')return arm('del');confirmKey=null;
-    const lbl=weekLabel(hist[cur]);hist.splice(cur,1);cur=pickCur();day=defDay();detail=null;save();render();toast(lbl+' silindi')}
+    const lbl=weekLabel(hist[cur]);doOp({t:'wdel'},()=>{cur=pickCur();day=defDay();detail=null});toast(lbl+' silindi')}
   else if(id==='ckclear'){const w=hist[cur],n=(w.done||[]).length;
     if(n&&confirm('Emin misiniz? '+n+' kalemin işareti kaldırılacak. Bu, iki telefonda da geçerli olur.')){w.done.slice().forEach(k=>check(k,false));toast('İşaretler temizlendi')}}
-  else if(id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);render();if(pin){dirty=true;saveLocal();push().then(()=>{if(sync==='ok')toast('PIN doğru, plan buluta kaydedildi')})}else setSync('nopin')}}
+  else if(id==='pin'){const p=prompt('Ortak PIN (Samet ve Raşe aynı PIN’i kullanır):',pin);if(p!==null){pin=p.trim();lsSet('beslenme-pin',pin);
+    if(pin){setSync('init');render();lastPoll=Date.now();pull().then(r=>{firstRun(r);render();if(sync==='ok')toast('PIN doğru, plan eşitlendi')})}else{setSync('nopin');render()}}}
   else if(id==='pdfClose')$('pdfhelp').hidden=true;
 });
 /* ===== YAZDIRMA: tüm hafta (öğün tabloları + besin değerleri + market listesi) #print'e yazılır ===== */
@@ -1071,7 +1091,7 @@ const wantPdf=new URLSearchParams(location.search).has('pdf');
 if(wantPdf)history.replaceState(null,'',location.pathname); // yenileyince tekrar yazdırmasın
 if(hist.length){cur=pickCur();day=defDay()}
 render();
-pull().then(()=>{if(!hist.length&&!ver){hist.push(generate([]));cur=0;day=defDay();save()} // ilk kurulum
+pull().then(r=>{firstRun(r);
   render();
   if(wantPdf){toast('Yazdırma penceresi açılmazsa PDF olarak indir’e dokunun');printNow()}}); // sunucudaki güncel plan geldikten sonra yazdır
 addEventListener('online',()=>{if(dirty)push()});
@@ -1084,8 +1104,10 @@ document.addEventListener('submit',e=>{if(e.target.id!=='addform')return;e.preve
 /* Diğer telefondaki değişiklikleri getir: Market sekmesi açıkken 5 sn'de, değilse 60 sn'de bir; sekme görünürken. */
 let lastPoll=Date.now();
 const shopInView=()=>tab==='shop'&&!detail;
-setInterval(()=>{if(document.hidden||dirty||!shopInView()&&Date.now()-lastPoll<60000)return;lastPoll=Date.now();pull()},5000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!dirty){lastPoll=Date.now();pull()}});
+const canPoll=()=>!document.hidden&&!dirty&&!['nopin','badpin','locked'].includes(sync); // hatalı PIN'le yoklamak kilitlenmeye yol açar
+setInterval(()=>{if(!canPoll()||!shopInView()&&Date.now()-lastPoll<60000)return;lastPoll=Date.now();pull()},5000);
+document.addEventListener('visibilitychange',()=>{if(canPoll()){lastPoll=Date.now();pull()}});
+if('serviceWorker' in navigator&&isSecureContext)navigator.serviceWorker.register('sw.js').catch(()=>{}); // çevrimdışı açılış
 /* Aşağı çekip yenile: tarayıcılar bunu kendisi yapar, yalnızca ana ekran uygulamasında (standalone) etkin. */
 if(navigator.standalone===true||matchMedia('(display-mode: standalone)').matches){
   const ind=$('ptr'),MAX=90,AT=64;let y0=null,d=0;

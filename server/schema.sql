@@ -14,3 +14,10 @@ CREATE TABLE IF NOT EXISTS state_backup (
   updated TEXT    NOT NULL,
   saved   TEXT    NOT NULL
 );
+
+-- Hatalı PIN denemeleri (IP başına; başarılı girişte silinir). Bkz. worker.js guard().
+CREATE TABLE IF NOT EXISTS pin_fail (
+  ip      TEXT    PRIMARY KEY,
+  n       INTEGER NOT NULL,
+  first   TEXT    NOT NULL
+);
