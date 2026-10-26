@@ -43,3 +43,54 @@ npm run deploy
 ```
 
 Yerel deneme: `server/.dev.vars` dosyasına `PIN=...` yazın, `npm run db:local && npm run dev`, ardından depo kökünde `python3 -m http.server 8000` ile sayfayı açın (localhost'ta sayfa otomatik olarak `localhost:8787`'deki API'yi kullanır).
+
+## Mealie
+
+Mealie ayrı Docker Compose projesinde çalışır: `deploy/mealie/compose.yaml`.
+Arayüz: https://kurtfamilyserver.dorper-boa.ts.net:9443 (Tailscale gerekir).
+Sunucuda yalnızca `127.0.0.1:9925` dinlenir; diğer servislerin portları değiştirilmez.
+Giriş e-postası ve rastgele oluşturulmuş parola `deploy/mealie/credentials.json` dosyasındadır (600 izinli, Git dışında). Varsayılan parola değiştirilmiştir. Bu dosyayı veya token'ları Git'e eklemeyin.
+
+**Kullanım:** Mealie'de tarif ekleyin veya bir tarifin internet bağlantısını içe aktarın. Katalog yaklaşık dakikada bir uygulamaya gönderilir. Beslenme Planı › Tercihler › Mealie tarifleri › Tarifleri getir / yenile yolundan bulun. Mevcut 62 Türkçe tarif zaten plan havuzundadır; tekrar eklenmez. Yeni tarifte “Kontrol ederek ekle” ile malzemeleri, birimleri ve iki kişinin miktarlarını onaylayıp kaydedin.
+
+- Kaynak dil korunur; İngilizce tarifin adı ve adımları kayıt öncesinde Türkçeleştirilebilir. Otomatik çeviri servisi kullanılmaz.
+- Kaynağın kalori/makro değerleri kişisel hesabın yerine geçirilmez. Hesap mevcut `F` besin tablosu ve porsiyon dengelemesiyle yapılır. Çiğ/pişmiş durumu, belirsiz ölçü, bilinmeyen malzeme veya eksik porsiyon otomatik tahmin edilmez.
+- Hazır tariflerin Samet ve Raşe miktarları, besin imzaları ve Türkçe adımları Mealie `extras.beslenme_v1` alanında korunur. Mealie'de düzenlenmiş bir tarife ait eski imza tekrar kullanılmaz.
+- İçe aktarılan tarif bağımsız kopyadır. Kullanılmış bir özel tarif düzenlenirse yeni kimlikle kaydedilir; geçmiş haftalar eski tarifte kalır.
+- Mealie token'ı yalnızca sunucuda kalır. `connector` Mealie'den okur ve Worker'a `MEALIE_SYNC_KEY` ile katalog gönderir. Uygulama kataloğu ortak PIN ile okur. Cloudflare'den sunucuya bağlantı açılması gerekmez.
+- Katalog `mealie_catalog` tablosundadır; mevcut `state` değiştirilmez. İlk katalog gönderiminden önce mevcut plan `state_backup` tablosuna aynı işlemde kopyalanır.
+- Katalog 300 tarif / 1,5 MB ile sınırlıdır; sınır aşılırsa son sağlam kopya korunur ve connector hata kaydeder. Son katalog zamanı arayüzde gösterilir.
+
+### İşletim
+
+```bash
+cd deploy/mealie
+docker compose --profile sync up -d
+docker compose logs --tail=30 connector
+docker compose ps
+```
+
+`credentials.json`: `url`, `email`, `password`, `token`, `worker` (Worker HTTPS adresi), `syncKey` alanlarını içerir. Worker'da aynı `MEALIE_SYNC_KEY` gizli değişken olarak tanımlıdır; mevcut `PIN` değiştirilmez. Tailscale yönlendirmesi için (ilk kurulumda):
+
+```bash
+sudo tailscale serve --bg --https=9443 http://127.0.0.1:9925
+```
+
+İlk hazır tarif aktarımı ve gerçek Mealie'den besin doğrulaması (depo kökünde):
+
+```bash
+node scripts/mealie-sync.mjs --seed --verify
+```
+
+Aktarım tekrar çalıştırılabilir; mevcut Mealie tariflerini silmez veya üzerine yazmaz. Mealie yönetim ekranından ayrıca düzenli tam yedek alın. İlk kurulumdaki kaynak kod ve önceki canlı Worker kopyası `/home/samet/backups/beslenme/` altındadır. Mealie verisi ayrı `mealie_mealie-data` Docker volume'ünde tutulur; geri dönüşte volume silinmemelidir.
+
+### Doğrulama
+
+```bash
+npm ci
+npm test
+```
+
+`tests/baseline.json`, entegrasyon öncesi sürümün sabit rastgelelik ile üretilmiş 100 haftalık planının; tüm porsiyon, besin ve market sonuçlarının özetidir. Testler bu sonucu, malzeme eşlemeyi, değişmiş imzaları, PIN korumasını, çakışmayı, katalog sınırlarını ve plan tablosunun değişmediğini kontrol eder. Testler Node 22 gerektirir.
+
+`npm run test:browser`, yalnızca yerel Wrangler (`localhost:8787`) ve statik sunucu (`localhost:8000`) kullanır. Yerel test verisini sıfırlar; canlı API'ye yazmaz. `TEST_CONFIG` JSON dosyasında yerel PIN bulunmalıdır; `CHROME_PATH` ile Chrome yolu seçilebilir. Test; Türkçe adlandırma, tam besin eşitliği, satır onayı, geçmişte tarif kopyalama, çevrimdışı işlem günlüğü, iki cihaz çakışması, otomatik tekrar deneme ve service worker ile gerçek çevrimdışı açılışı denetler.

@@ -6,6 +6,8 @@
                       prefs = {tarifId: 1 (sevdik) | -1 (sevmedik)}; gönderilmezse kayıtlı tercihler korunur.
                       base, sunucudaki v ile aynı değilse 409 + güncel durum döner. */
 
+import { mealieCatalog } from './mealie-catalog.js';
+
 const MAX_BODY = 250_000; // 26 hafta + en fazla 60 kendi tarifi
 const ID = /^[a-z0-9_-]{1,24}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -126,6 +128,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req, env) });
+    if (url.pathname === '/api/mealie/catalog') return mealieCatalog(req, env, {json, guard, pinOk});
     if (url.pathname !== '/api/state') return json({ error: 'not_found' }, 404, req, env);
 
     if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'PUT') return json({ error: 'method' }, 405, req, env);
@@ -139,6 +142,7 @@ export default {
       if (text.length > MAX_BODY) return json({ error: 'too_large' }, 413, req, env);
       let body;
       try { body = JSON.parse(text); } catch { return json({ error: 'bad_json' }, 400, req, env); }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ error: 'invalid' }, 400, req, env);
       // Eski sürüm sayfalar prefs göndermez: o durumda kayıtlı tercihleri koru.
       const state = { hist: body.hist, custom: body.custom, prefs: body.prefs === undefined ? (await readState(env)).prefs : body.prefs };
       if (!Number.isInteger(body.base) || body.base < 0 || !validState(state)) return json({ error: 'invalid' }, 400, req, env);

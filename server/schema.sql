@@ -21,3 +21,10 @@ CREATE TABLE IF NOT EXISTS pin_fail (
   n       INTEGER NOT NULL,
   first   TEXT    NOT NULL
 );
+
+-- Mealie kataloğu plan geçmişinden bağımsızdır. Worker gerektiğinde de oluşturur.
+CREATE TABLE IF NOT EXISTS mealie_catalog (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  data TEXT NOT NULL,
+  updated TEXT NOT NULL
+);

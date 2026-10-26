@@ -279,6 +279,7 @@ select.inp{appearance:auto}
 <div id="toast" role="status" hidden></div>
 <div id="ptr" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
 
+<script src="mealie-adapter.js"></script>
 <script>
 /* ===== BESİN VERİTABANI: 100 g/ml başına (u:'adet'/'ölçek' ise birim başına) [kcal, protein, karb, yağ, lif] ===== */
 const F={
@@ -528,7 +529,8 @@ function validRecipe(r,kind){
     const steps=(r.steps||[]).filter(x=>typeof x==='string'&&x.length>5).slice(0,6).map(x=>x.slice(0,300));if(steps.length<1)return null;
     const spice=(r.spice||[]).filter(x=>typeof x==='string').slice(0,6).map(x=>x.slice(0,30));
     const pt=['tavuk','kiyma','et','bakliyat','balik'].includes(r.pt)?r.pt:'et';
-    return {name:r.name,pt,two:!!r.two_day,kind:kind==='b'||kind==='s'?kind:(r.two_day?'d':'z'),ing,steps,spice,custom:1};
+    const source=r.source&&typeof r.source.id==='string'&&/^[a-z0-9-]{1,64}$/i.test(r.source.id)?{id:r.source.id,name:String(r.source.name||'').slice(0,300),slug:String(r.source.slug||'').slice(0,200)}:null;
+    return {name:r.name,pt,two:!!r.two_day,kind:kind==='b'||kind==='s'?kind:(r.two_day?'d':'z'),ing,steps,spice,custom:1,...(source?{source}:{})};
   }catch(e){return null}
 }
 /* Kendi tarifi havuza koyar; aynı kimlikli eski hâlini çıkarır (düzenleme). Arşivlenen (hidden) tarif ALL'da kalır ama havuza girmez. */
@@ -680,7 +682,7 @@ function shopText(w,plans){
   SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';doneLast(sh[k],w.done||[]).forEach(x=>{const q=(w.qty||{})[x.k];t+=((w.done||[]).includes(x.k)?'☑ ':'☐ ')+x.n+' — '+(q||x.buy+(x.need?' (gerekli: '+x.need+')':''))+'\n'})});
   return t;
 }
-if(typeof module!=='undefined')module.exports={doneLast,validRecipe,validDays,daysOf,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
+if(typeof module!=='undefined')module.exports={F,doneLast,validRecipe,validDays,daysOf,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
 
 /* ===== ARAYÜZ ===== */
 if(typeof document!=='undefined'){
@@ -704,11 +706,13 @@ loadCustom(lsGet('beslenme-custom',[]));
 function loadPrefs(o){Object.keys(PREFS).forEach(k=>delete PREFS[k]);if(o&&typeof o==='object')Object.entries(o).forEach(([k,v])=>{if(ALL[k]&&(v===1||v===-1))PREFS[k]=v})}
 loadPrefs(lsGet('beslenme-prefs',{}));
 {const h=lsGet('beslenme-hist',[]);if(validHist(h)){hist=h;if(datedHist(hist))dirty=true}} // eski 'Hafta 5' kayıtları tarihe taşınır
-function saveLocal(){lsSet('beslenme-hist',hist);lsSet('beslenme-custom',custom);lsSet('beslenme-prefs',PREFS);lsSet('beslenme-ver',ver);lsSet('beslenme-dirty',dirty)}
+function saveLocal(){lsSet('beslenme-hist',hist);lsSet('beslenme-custom',custom);lsSet('beslenme-prefs',PREFS);lsSet('beslenme-ver',ver);lsSet('beslenme-dirty',dirty);lsSet('beslenme-ops',pendingOps)}
 /* Her değişiklik bir işlem (op) olarak tutulur ve sunucuda daha yeni bir sürüm varsa (başka telefon kaydetmişse)
    onun üzerine yeniden uygulanır; böylece iki telefon aynı anda değişiklik yapsa da kimsenin değişikliği kaybolmaz.
    İşlemler haftayı start ile bulur ve tekrar uygulanınca aynı sonucu verir. */
-let pendingOps=[],seq=0; // seq: her değişiklikte artar; gönderim sırasında yeni değişiklik olduysa kirli kalır
+let pendingOps=lsGet('beslenme-ops',[]),seq=0; // yeniden açılışta gönderilmemiş işlemler korunur
+if(!Array.isArray(pendingOps))pendingOps=[];
+if(pendingOps.length)dirty=true;
 const clone=o=>JSON.parse(JSON.stringify(o));
 function applyOp(o){
   if(o.t==='pref'){if(o.v)PREFS[o.id]=o.v;else delete PREFS[o.id];return}
@@ -733,7 +737,7 @@ function applyOp(o){
   if(o.t==='qty'){const q={...(w.qty||{})};if(o.v)q[o.k]=o.v;else delete q[o.k];if(Object.keys(q).length)w.qty=q;else delete w.qty;return} // elle yazılan miktar ('' = hesaplanana dön)
   const a=new Set(w.done||[]);o.on?a.add(o.k):a.delete(o.k);if(a.size)w.done=[...a];else delete w.done}
 /* after: işlem uygulandıktan sonra, çizimden önce çalışır (ör. açık haftayı değiştirmek için). */
-function doOp(o,after){if(o.start===undefined&&o.t!=='pref'&&o.t!=='new')o.start=hist[cur].start;pendingOps.push(o);applyOp(o);if(after)after();seq++;dirty=true;saveLocal();render();push()}
+function doOp(o,after){if(o.start===undefined&&!['pref','new','recipe','rhide'].includes(o.t))o.start=hist[cur].start;pendingOps.push(o);applyOp(o);if(after)after();seq++;dirty=true;saveLocal();render();push()}
 const check=(k,on)=>doOp({k,on});
 /* ===== SİMGELER: 24×24 çizgi simgeler ===== */
 const SV=(d,s=20,w=2,cls)=>'<svg'+(cls?' class="'+cls+'"':'')+' width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+w+'" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
@@ -803,7 +807,7 @@ async function doPush(){
   if(!pin){setSync('nopin');return}
   const s0=seq,n0=pendingOps.length;
   try{
-    const r=await fetch(API+'/api/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Pin':pin},body:JSON.stringify({base:ver,hist,custom,prefs:PREFS})});
+    const r=await fetch(API+'/api/state',{method:'PUT',headers:{'Content-Type':'application/json','X-Pin':pin},body:JSON.stringify({base:ver,hist,custom,prefs:PREFS}),signal:AbortSignal.timeout(15000)});
     if(r.status===401){setSync('badpin');return}
     if(r.status===429){setSync('locked');return}
     const d=await r.json();
@@ -817,7 +821,7 @@ async function doPush(){
 /* Okuma da PIN ister. Sunucu boşsa 'empty' döner (ilk kurulum). */
 async function pull(){
   try{
-    const r=await fetch(API+'/api/state',{cache:'no-store',headers:pin?{'X-Pin':pin}:{}});
+    const r=await fetch(API+'/api/state',{cache:'no-store',headers:pin?{'X-Pin':pin}:{},signal:AbortSignal.timeout(15000)});
     if(r.status===401){setSync(pin?'badpin':'nopin');return}
     if(r.status===429){setSync('locked');return}
     if(!r.ok)throw new Error(r.status);
@@ -977,7 +981,7 @@ function prefsHTML(){
   h+='<section class="card pad"><div class="row"><h2>Bulut eşitleme</h2>'+syncSpan()+'</div><p class="note" id="synclong">'+SYNC[sync][3]+'</p>'+
     '<p class="note">Plan iki telefonda da aynı görünür. Değişiklik yapmak için ortak PIN gerekir; her cihazda bir kez girilir.</p>'+
     '<button class="btn" id="pin" style="align-self:flex-start">'+SV(I.key,18)+(pin?'PIN değiştir':'PIN gir')+'</button></section>';
-  h+=myRecipesHTML();
+  h+=mealieHTML()+myRecipesHTML();
   const ids=Object.keys(PREFS).filter(id=>ALL[id]);
   const li=v=>ids.filter(id=>PREFS[id]===v).map(id=>'<li><span>'+esc(ALL[id].name)+'</span><button class="btn" style="min-height:40px" data-unpref="'+id+'">Kaldır</button></li>').join('');
   [[1,'Sevdikleriniz','Daha sık gelir.',''],[-1,'Sevmedikleriniz','Yeni haftalara konmaz.','flip']].forEach(([v,t,s,f])=>{const l=li(v);
@@ -1025,11 +1029,12 @@ const kindOf=r=>r.custom?r.kind:B.includes(r)?'b':S.includes(r)?'s':D.includes(r
 /* keep: aynı tarifi düzenle (kimlik korunur); değilse kopyasından yeni tarif. */
 function fromRecipe(r,keep){
   return {...blankRecipe(),id:keep?r.id:null,kind:kindOf(r),name:r.name,pt:r.pt||'tavuk',
-    rows:r.ing.map(i=>({k:i[0],s:i[1],r:i[2],serve:!!i[3],rAuto:false})),steps:r.steps.join('\n'),spice:(r.spice||[]).join(', ')};
+    rows:r.ing.map(i=>({k:i[0],s:i[1],r:i[2],serve:!!i[3],rAuto:false,confirmed:!!r.source})),steps:r.steps.join('\n'),spice:(r.spice||[]).join(', '),...(r.source?{source:r.source}:{})};
 }
 const rowsIng=e=>e.rows.filter(x=>x.k&&+x.s>0&&+x.r>0).map(x=>[x.k,+x.s,+x.r,x.serve?1:0]);
 const draftOf=e=>({name:e.name.trim(),pt:e.pt,two_day:e.kind==='d',ing:rowsIng(e),
-  steps:e.steps.split('\n').map(s=>s.trim()).filter(Boolean),spice:e.spice.split(',').map(s=>s.trim()).filter(Boolean)});
+  steps:e.steps.split('\n').map(s=>s.trim()).filter(Boolean),spice:e.spice.split(',').map(s=>s.trim()).filter(Boolean),...(e.source?{source:e.source}:{})});
+const editorValid=e=>MealieAdapter.reviewed(e)&&!!validRecipe(draftOf(e),e.kind);
 const isCnt=k=>F[k].u==='adet'||F[k].u==='ölçek';
 const unitOf=k=>!k||!F[k]?'g':F[k].u||'g';
 function openEditor(e){e.back={detail,tab,y:window.scrollY};editor=e;detail=null;placeFor=null;render();window.scrollTo({top:0})}
@@ -1179,15 +1184,16 @@ function checkHTML(){
   const half=e.rows.filter(x=>x.k&&!(+x.s>0&&+x.r>0));
   if(half.length)hints.unshift('Miktarı eksik: '+half.map(x=>F[x.k].n.replace(/ \(.*\)/,'')).join(', '));
   if(ing.some(i=>isCnt(i[0])?i[1]>10||i[2]>10:i[1]>600||i[2]>600))items.push(['Bir satır en fazla 600 g / 10 adet',false]);
-  const ok=!!validRecipe(draftOf(e),e.kind);
+  if(e.source)items.push(['Tüm kaynak malzemelerinin birimi ve miktarı onaylandı',MealieAdapter.reviewed(e)]);
+  const ok=editorValid(e);
   return '<section class="card pad" id="rcheck" aria-live="polite"><div class="row"><h2>Kontrol</h2><span class="pill'+(ok?'':' bad')+'">'+(ok?'Kaydedilebilir':'Eksikler var')+'</span></div>'+
     '<ul class="qc">'+items.map(q=>'<li'+(q[1]?'':' class="bad"')+'>'+SV(q[1]?I.check:I.alert,18,2.4)+q[0]+'</li>').join('')+'</ul>'+
     (hints.length?'<ul class="note dlist">'+hints.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':'')+
     '<p class="note">Plan oluşturulurken porsiyonlar ikinizin günlük hedefine göre ayrıca ince ayarlanır; burada yaklaşık değerler yeterli.</p></section>';
 }
-function saveHTML(){const ok=!!validRecipe(draftOf(editor),editor.kind);
+function saveHTML(){const ok=editorValid(editor);
   return '<div id="rsavebox" style="display:flex;flex-direction:column;gap:8px"><button class="btn primary big" data-act="rsave"'+(ok?'':' disabled')+'>Kaydet</button>'+
-    (editor.id?'<p class="note" style="text-align:center">Değişiklik bu tarifin geçtiği tüm haftalarda görünür.</p>':'')+'</div>'}
+    (editor.id?'<p class="note" style="text-align:center">Geçmişte kullanılmış tarif yeni kopya olarak kaydedilir; önceki planlar korunur.</p>':'')+'</div>'}
 function importHTML(e){
   return '<h3>Malzeme listesinden</h3><p class="note">Listeyi yapıştırın (ör. “300 g kıyma”, “2 patlıcan”, “1 su bardağı bulgur”); tabloyla eşleştirip aşağıya dökeriz.</p>'+
     '<label class="fl">Malzeme listesi<textarea class="inp" data-f="imp" rows="5">'+esc(e.imp)+'</textarea></label>'+
@@ -1209,7 +1215,7 @@ function editorHTML(){
   if(e.notes.length)h+='<section class="card pad impnotes"><h3>Kontrol edin</h3><ul class="note dlist">'+e.notes.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul></section>';
   h+='<section class="card"><div class="pad" style="padding-bottom:4px"><div class="row"><h2>Malzemeler</h2><span class="note">1 gün · kişi başı</span></div>'+
     (e.kind==='d'?'<p class="note">“Her gün taze” işaretliler (pilav, yoğurt, salata) tencere toplamına girmez.</p>':'')+'</div>'+
-    e.rows.map((x,i)=>rowHTML(x,i,e.kind==='d')).join('')+
+    e.rows.map((x,i)=>rowHTML(x,i,e.kind==='d')+(e.source?'<div class="pad"><p class="note">Kaynak: '+esc(x.original||F[x.k]?.n||'Elle eklenen malzeme')+'</p><label><input type="checkbox" data-row="'+i+'" data-f="confirmed"'+(x.confirmed?' checked':'')+'> Besin, çiğ/pişmiş durumu, birim ve iki kişinin miktarını kontrol ettim</label></div>':'')).join('')+
     '<div class="pad" style="padding-top:8px"><button class="btn" data-act="addrow" style="align-self:flex-start">'+SV(I.plus,18)+'Malzeme ekle</button></div></section>';
   h+=checkHTML();
   h+='<section class="card pad"><h2>Hazırlanışı</h2><label class="fl">Adımlar (her satıra bir adım, en fazla 6)<textarea class="inp" data-f="steps" rows="6">'+esc(e.steps)+'</textarea></label>'+
@@ -1221,6 +1227,8 @@ function edRefresh(){const c=$('rcheck');if(c)c.outerHTML=checkHTML();const s=$(
 function edInput(t){
   const e=editor,f=t.dataset.f;if(!e||!f)return;
   if(t.dataset.row!==undefined){const x=e.rows[+t.dataset.row];if(!x)return;
+    if(f==='confirmed'){x.confirmed=t.checked;edRefresh();return}
+    if(e.source){x.confirmed=false;const cb=document.querySelector('[data-row="'+t.dataset.row+'"][data-f="confirmed"]');if(cb)cb.checked=false}
     if(f==='k'){x.k=t.value;render();return} // birim değişir: satırı yeniden çiz
     if(f==='serve')x.serve=t.checked;
     else if(f==='s'){x.s=t.value;if(x.rAuto&&x.k){const v=+t.value;x.r=v>0?rnd(x.k,v*.8):'';const ri=t.closest('.erow').querySelector('[data-f="r"]');if(ri)ri.value=x.r}} // Raşe ~%80 önerilir
@@ -1238,6 +1246,38 @@ function fillEditor(res,label){
   if(res.spice){const cur=e.spice.split(',').map(s=>s.trim()).filter(Boolean),add=(Array.isArray(res.spice)?res.spice:res.spice.split(',').map(s=>s.trim())).filter(s=>s&&!cur.includes(s));e.spice=[...cur,...add].join(', ')}
   e.notes=res.notes;render();
   toast(res.rows.length+' malzeme dolduruldu'+(res.notes.length?'; notları kontrol edin':''));
+}
+let mealie={recipes:[],updated:null},mealieStatus='idle',mealieQuery='';
+async function loadMealie(){
+  if(mealieStatus==='loading')return;
+  if(!pin){toast('Önce ortak PIN’i girin');return}
+  mealieStatus='loading';render();
+  try{
+    const r=await fetch(API+'/api/mealie/catalog',{cache:'no-store',headers:{'X-Pin':pin},signal:AbortSignal.timeout(15000)});
+    if(r.status===401){setSync('badpin');throw new Error('pin')}
+    if(r.status===429){setSync('locked');throw new Error('locked')}
+    if(!r.ok)throw new Error('http');
+    const d=await r.json();if(!Array.isArray(d.recipes))throw new Error('invalid');
+    mealie={recipes:d.recipes,updated:d.updated,home:d.home};mealieStatus=d.configured?'ok':'unconfigured';
+  }catch(_){mealieStatus='error'}
+  render();
+}
+function mealieHTML(){
+  const q=mealieQuery.toLocaleLowerCase('tr-TR'),all=mealie.recipes.filter(r=>r.name.toLocaleLowerCase('tr-TR').includes(q));
+  let h='<section class="card"><div class="pad"><div class="row"><h2>Mealie tarifleri</h2><span class="note">'+mealie.recipes.length+' tarif</span></div><p class="note">Tarif seçin; iki kişinin porsiyonlarını kontrol ederek planınıza kopyalayın. Kaynak tarifin sonraki değişiklikleri geçmiş planları etkilemez.</p>'+
+    '<button class="btn" data-mealie="load"'+(mealieStatus==='loading'?' disabled':'')+'>'+(mealieStatus==='loading'?'Tarifler getiriliyor…':'Tarifleri getir / yenile')+'</button>';
+  if(mealieStatus==='error')h+='<p class="note" role="status">Kataloğa ulaşılamadı. PIN’i ve bağlantıyı kontrol edip tekrar deneyin. Mevcut planınız kullanılabilir.</p>';
+  if(mealieStatus==='unconfigured'||mealieStatus==='ok'&&!mealie.updated)h+='<p class="note">Mealie bağlantısı hazırlanıyor; henüz katalog gönderilmedi.</p>';
+  if(mealie.updated)h+='<p class="note">Son katalog: '+esc(new Date(mealie.updated).toLocaleString('tr-TR'))+(Date.now()-Date.parse(mealie.updated)>300000?' · Bağlantı gecikmiş olabilir; son kopya gösteriliyor.':'')+'</p>';
+  if(mealie.home&&/^https:\/\//.test(mealie.home))h+='<a class="btn" href="'+q2(mealie.home)+'" target="_blank" rel="noopener">Mealie’yi aç</a><p class="note">Mealie’ye giriş için Tailscale bağlantınızın açık olması gerekir.</p>';
+  if(mealie.recipes.length)h+='<form id="mealie-search" class="addrow"><input id="mealie-query" class="inp" aria-label="Mealie tariflerinde ara" placeholder="Tarif ara" value="'+q2(mealieQuery)+'"><button class="btn" type="submit">Ara</button></form>';
+  h+='</div>';
+  if(mealie.recipes.length)h+='<ul class="list rlist">'+all.slice(0,20).map(r=>{
+    const snap=MealieAdapter.readSnapshot(r,F),existing=snap&&!snap.recipe.custom&&ALL[snap.recipe.id],imported=custom.some(c=>c.source?.id===r.id&&!c.hidden);
+    return '<li><div class="rn"><b>'+esc(r.name)+'</b><span class="note">'+(existing?'Türkçe · Plan havuzunda mevcut':snap?'Doğrulanmış kişi porsiyonları':'Kaynak dili · Malzeme kontrolü gerekli')+(imported?' · Daha önce alındı':'')+'</span></div>'+
+      (existing?'':'<button class="btn sm" data-mealie="import" data-id="'+q2(r.id)+'">Kontrol ederek ekle</button>')+'</li>';
+  }).join('')+'</ul><p class="note pad">'+all.length+' sonuç'+(all.length>20?' · İlk 20 gösteriliyor; arayarak daraltın.':'')+'</p>';
+  return h+'</section>';
 }
 function myRecipesHTML(){
   const vis=custom.filter(r=>!r.hidden),arch=custom.filter(r=>r.hidden),w=hist[cur],canPut=editable(w);
@@ -1260,6 +1300,10 @@ function myRecipesHTML(){
 /* Form ve tarif listesi tıklamaları; işlendiyse true. */
 function recipeClick(c){
   let b;
+  if(b=c('[data-mealie]')){const a=b.dataset.mealie;if(a==='load')loadMealie();else if(a==='import'){
+    const r=mealie.recipes.find(x=>x.id===b.dataset.id);if(!r)return true;
+    openEditor({...blankRecipe(),...MealieAdapter.draft(r,F)});
+  }return true}
   if(b=c('[data-act]')){const a=b.dataset.act,e=editor;
     if(a==='rnew'){openEditor(blankRecipe());return true}
     if(!e)return false;
@@ -1270,7 +1314,10 @@ function recipeClick(c){
       fillEditor(parseList(e.imp,e.impn,e.kind),'listeden')}
     else if(a==='cprompt')copyText(claudePrompt(e.kind)).then(()=>toast('Talimat kopyalandı; claude.ai’de yapıştırıp sona tarifinizi ekleyin')).catch(()=>toast('Kopyalanamadı'));
     else if(a==='cjson'){const r=fromClaude(e.cj);if(r.err)return toast(r.err),true;fillEditor(r,'Claude’dan')}
-    else if(a==='rsave'){const v=validRecipe(draftOf(e),e.kind);if(!v)return toast('Kontrol listesindeki eksikleri tamamlayın'),true;
+    else if(a==='rsave'){const v=editorValid(e)&&validRecipe(draftOf(e),e.kind);if(!v)return toast('Kontrol listesindeki eksikleri tamamlayın'),true;
+      if(e.id&&hist.some(w=>w.plans.some(p=>[p.b,p.s,p.d].includes(e.id)))){
+        e.id=null;e.notes.push('Önceki haftalar korunarak yeni bir tarif kopyası kaydedildi.');
+      }
       if(!e.id&&custom.length>=60)return toast('En fazla 60 kendi tarifiniz olabilir'),true;
       const id=e.id||'c_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),isNew=!e.id;
       if(isNew){editor=null;doOp({t:'recipe',r:{...v,id,hidden:false}},()=>{tab='prefs';detail=null});window.scrollTo({top:0});toast(v.name+' kaydedildi')}
@@ -1405,7 +1452,7 @@ addEventListener('online',()=>{if(dirty)push()});
 /* Market listesine ürün ekleme formu */
 document.addEventListener('input',e=>{if(e.target.id==='addn')addDraft.n=e.target.value;else if(e.target.id==='addq')addDraft.q=e.target.value;
   else if(editor&&e.target.closest('#ed'))edInput(e.target)});
-document.addEventListener('submit',e=>{if(e.target.id!=='addform')return;e.preventDefault();
+document.addEventListener('submit',e=>{if(e.target.id==='mealie-search'){e.preventDefault();mealieQuery=$('mealie-query').value.trim();render();return}if(e.target.id!=='addform')return;e.preventDefault();
   const n=addDraft.n.trim().slice(0,60),q=addDraft.q.trim().slice(0,40);if(!n){$('addn').focus();return}
   if((hist[cur].extra||[]).length>=60)return toast('Bir haftaya en fazla 60 ürün eklenebilir');
   addDraft={n:'',q:''};doOp({t:'add',k:'u_'+Date.now().toString(36).slice(-7)+Math.random().toString(36).slice(2,5),n,q});toast(n+' listeye eklendi');$('addn').focus()});
@@ -1413,6 +1460,8 @@ document.addEventListener('submit',e=>{if(e.target.id!=='addform')return;e.preve
 let lastPoll=Date.now();
 const shopInView=()=>tab==='shop'&&!detail;
 const canPoll=()=>!document.hidden&&!dirty&&!['nopin','badpin','locked'].includes(sync); // hatalı PIN'le yoklamak kilitlenmeye yol açar
+let retryAt=0;
+setInterval(()=>{if(!document.hidden&&dirty&&pin&&!['badpin','locked'].includes(sync)&&Date.now()-retryAt>=15000){retryAt=Date.now();push()}},5000);
 setInterval(()=>{if(!canPoll()||!shopInView()&&Date.now()-lastPoll<60000)return;lastPoll=Date.now();pull()},5000);
 document.addEventListener('visibilitychange',()=>{if(canPoll()){lastPoll=Date.now();pull()}});
 if('serviceWorker' in navigator&&isSecureContext)navigator.serviceWorker.register('sw.js').catch(()=>{}); // çevrimdışı açılış

@@ -4,6 +4,7 @@ compatibility_date = "2026-09-01"
 
 [vars]
 ALLOWED_ORIGINS = "https://sammkrt.github.io,http://localhost:8000"
+MEALIE_HOME = "https://kurtfamilyserver.dorper-boa.ts.net:9443"
 
 # database_id, `npx wrangler d1 create beslenme` çıktısından gelir (gizli bilgi değildir).
 [[d1_databases]]
