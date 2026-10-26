@@ -46,3 +46,9 @@ Kaynak yedeği `/home/samet/backups/beslenme/` altında. Önceki Git sürümün�
 - Mealie arayüzü için ek Tailscale yönlendirmesi kullanıcı tarafından çalıştırıldı; mevcut 443 ve 8443 yönlendirmeleri korundu.
 - Yayındaki HTML, adaptör ve service worker dosyalarının SHA256 değerleri yerelde test edilen dosyalarla eşleşti. Yayındaki mobil arayüz izole test verisiyle 62 tarifi hatasız gösterdi; bu kontrol canlı plan verisine erişmedi veya yazmadı.
 - Mealie yönetimine gerçek Chrome ile `samet` hesabıyla giriş ve ana sayfa doğrulandı; JavaScript hatası yok. Var olan 3000, 3100, 3200 ve 8081 servisleri HTTP 200 döndürdü.
+
+## İnternetten otomatik tarif seçimi
+
+İkinci aşama [AUTOMATIK-TARIFLER.md](AUTOMATIK-TARIFLER.md) dosyasında açıklanır. Yeni hafta isteği artık Türkçe akşam tarifleri keşfeder; en fazla iki yeni yemek seçilir ve tüm gün gruplarında iki kişinin son kalori/protein toplamları doğrulanır. Eski hesap çekirdeği korunur.
+
+18 Node testi, 52 haftalık yeni hedef denetimi, önceki 100 haftalık hesap özeti, gerçek Mealie'den 62 tarifin besin karşılaştırması ve iki Chrome akışı geçti. Gerçek internet taramalarında uygun bulunan dört yeni tarif Mealie'ye alındı. Yerel Worker → gerçek connector → internet → Mealie → katalog akışı da doğrulandı. Chrome testi gerçek kaynak adaylarıyla hafta oluşturma, eski haftanın korunması, tarif/hafta kopyalarının birlikte çevrimdışı ve çakışmalı yeniden kaydı ve kaynak kesintisinde mevcut tariflere dönüşü kapsar. Testler canlı plan tablosuna yazmadı.

@@ -7,6 +7,7 @@
                       base, sunucudaki v ile aynı değilse 409 + güncel durum döner. */
 
 import { mealieCatalog } from './mealie-catalog.js';
+import { mealieDiscovery } from './mealie-discovery.js';
 
 const MAX_BODY = 250_000; // 26 hafta + en fazla 60 kendi tarifi
 const ID = /^[a-z0-9_-]{1,24}$/i;
@@ -40,7 +41,7 @@ function cors(req, env) {
   const origin = req.headers.get('Origin') || '';
   const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
   const h = {
-    'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Pin',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
@@ -129,6 +130,7 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req, env) });
     if (url.pathname === '/api/mealie/catalog') return mealieCatalog(req, env, {json, guard, pinOk});
+    if (url.pathname === '/api/mealie/discover') return mealieDiscovery(req, env, {json, guard, pinOk});
     if (url.pathname !== '/api/state') return json({ error: 'not_found' }, 404, req, env);
 
     if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'PUT') return json({ error: 'method' }, 405, req, env);

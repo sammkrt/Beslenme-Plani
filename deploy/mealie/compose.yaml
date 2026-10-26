@@ -26,7 +26,10 @@ services:
     volumes:
       - ../../scripts:/app/scripts:ro
       - ../../mealie-adapter.js:/app/mealie-adapter.js:ro
+      - ../../auto-recipes.js:/app/auto-recipes.js:ro
+      - ../../index.html:/app/index.html:ro
       - ./credentials.json:/app/deploy/mealie/credentials.json:ro
+      - ./runtime:/app/deploy/mealie/runtime
     depends_on:
       mealie:
         condition: service_healthy

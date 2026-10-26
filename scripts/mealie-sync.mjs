@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
+import {catalogItem,discover} from './discover-recipes.mjs';
 const require=createRequire(import.meta.url),loadCore=require('./app-core.cjs'),adapter=require('../mealie-adapter.js');
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const config=JSON.parse(fs.readFileSync(process.env.MEALIE_CONFIG||path.join(root,'deploy/mealie/credentials.json'),'utf8'));
@@ -32,11 +33,15 @@ async function seed(){
   }
   console.log(JSON.stringify({seeded:created.length}));
 }
-async function catalogue(){
+async function catalogue(all=false){
   const out=[];for(const r of await list()){
     const d=await api('/api/recipes/'+encodeURIComponent(r.slug));
-    out.push({id:d.id,slug:d.slug,name:d.name,recipeServings:d.recipeServings,recipeIngredient:d.recipeIngredient.map(i=>({quantity:i.quantity,unit:i.unit?{name:i.unit.name,abbreviation:i.unit.abbreviation}:null,food:i.food?{name:i.food.name}:null,note:i.note,display:i.display,originalText:i.originalText})),recipeInstructions:d.recipeInstructions,nutrition:d.nutrition,extras:{beslenme_v1:d.extras?.beslenme_v1}});
-  }return out;
+    out.push(catalogItem(d));
+  }
+  if(all)return out;
+  const created=r=>{try{return Date.parse(JSON.parse(r.extras.beslenme_auto_v1).created)||0}catch(_){return 0}};
+  const automatic=out.filter(r=>r.extras.beslenme_auto_v1).sort((a,b)=>created(b)-created(a)).slice(0,80),ordinary=out.filter(r=>!r.extras.beslenme_auto_v1);
+  return [...ordinary,...automatic];
 }
 async function sync(){
   const recipes=await catalogue();
@@ -56,6 +61,31 @@ async function sync(){
   const result=await r.json();console.log(JSON.stringify({published:recipes.length,backupCreated:result.backupCreated}));
 }
 if(process.argv.includes('--seed'))await seed();
+const stateFile=process.env.MEALIE_DISCOVERY_STATE||path.join(root,'deploy/mealie/runtime/discovery.json');
+async function jobAPI(method='GET',body){
+  if(!config.worker||!config.syncKey)return null;
+  const r=await fetch(config.worker+'/api/mealie/discover',{method,headers:{'Content-Type':'application/json','X-Sync-Key':config.syncKey},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(12000)});
+  if(!r.ok)throw new Error('Discovery worker HTTP '+r.status);return r.json();
+}
+async function scan(job){
+  if(job)await jobAPI('PUT',{id:job.request_id,status:'running'});
+  try{
+    const report=await discover({api,core:loadCore().core,current:await catalogue(true),stateFile});
+    if(report.busy)return;
+    await sync();if(job)await jobAPI('PUT',{id:job.request_id,status:'ready',report});console.log(JSON.stringify({discovery:report}));
+  }catch(e){if(job)await jobAPI('PUT',{id:job.request_id,status:'error',report:{errors:1}});throw e}
+}
+if(process.argv.includes('--discover'))await scan();
 if(process.argv.includes('--watch')){
-  while(true){try{await sync()}catch(e){console.error(e.message)}await new Promise(r=>setTimeout(r,60000))}
-}else await sync();
+  let lastSync=0,nextBackground=0;
+  try{nextBackground=JSON.parse(fs.readFileSync(stateFile,'utf8')).lastRun+86400000}catch(_){}
+  while(true){
+    try{
+      const {job}=await jobAPI()||{};
+      if(job&&(job.status==='queued'||job.status==='running'&&Date.now()-Date.parse(job.requested)>120000)){await scan(job);lastSync=Date.now();nextBackground=Date.now()+86400000}
+      else if(Date.now()>nextBackground){nextBackground=Date.now()+900000;await scan();lastSync=Date.now();nextBackground=Date.now()+86400000}
+      if(Date.now()-lastSync>60000){await sync();lastSync=Date.now()}
+    }catch(e){console.error(e.message)}
+    await new Promise(r=>setTimeout(r,5000));
+  }
+}else if(!process.argv.includes('--discover'))await sync();

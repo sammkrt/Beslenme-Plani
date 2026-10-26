@@ -1,8 +1,8 @@
 /* Çevrimdışı açılış. Sayfa önce ağdan istenir (en fazla 4 sn beklenir), gelmezse son kopya açılır;
    böylece yeni sürüm hemen gelir ama markette zayıf bağlantıda da uygulama açılır.
    Simgeler ve fontlar önbellekten verilip arka planda yenilenir. API (/api/state) hiç önbelleğe alınmaz. */
-const CACHE = 'beslenme-v2';
-const CORE = ['./', 'index.html', 'mealie-adapter.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const CACHE = 'beslenme-v3';
+const CORE = ['./', 'index.html', 'mealie-adapter.js', 'auto-recipes.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));

@@ -10,7 +10,7 @@ async function state(){const r=await fetch(API+'/api/state',{headers});assert(r.
 async function put(data){const r=await fetch(API+'/api/state',{method:'PUT',headers,body:JSON.stringify(data)});assert(r.ok);return r.json()}
 (async()=>{
   let d=await state();await put({base:d.v,hist:[a.generate([])],custom:[],prefs:{}});
-  const cat=await(await fetch(API+'/api/mealie/catalog',{headers})).json();assert.equal(cat.recipes.length,62);
+  const cat=await(await fetch(API+'/api/mealie/catalog',{headers})).json();assert(cat.recipes.length>=62);const count=cat.recipes.length;
   const original=a.B[2],fixture={id:'f0000000-0000-4000-8000-000000000001',slug:'english-test',name:'English breakfast test',recipeServings:2,recipeIngredient:original.ing.map(i=>({quantity:i[1]+i[2],unit:{name:a.F[i[0]].u||'g'},food:{name:a.F[i[0]].n}})),recipeInstructions:[{text:'Prepare the ingredients and serve.'}],extras:{}};
   const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',args:['--no-sandbox']});
   try{
@@ -20,7 +20,7 @@ async function put(data){const r=await fetch(API+'/api/state',{method:'PUT',head
     await page.route('**/api/mealie/catalog',async route=>{if(route.request().method()==='GET')await route.fulfill({json:{...cat,recipes:[fixture,...cat.recipes]}});else await route.continue()});
     await page.goto(SITE);await page.locator('#sync').filter({hasText:'Eşitlendi'}).waitFor();
     await page.locator('[data-tab="prefs"]').first().click();await page.locator('[data-mealie="load"]').click();
-    await page.locator('text=63 tarif').waitFor();await page.locator('#mealie-query').fill('English breakfast');await page.locator('#mealie-search button').click();
+    await page.locator('text='+(count+1)+' tarif').waitFor();await page.locator('#mealie-query').fill('English breakfast');await page.locator('#mealie-search button').click();
     await page.locator('[data-mealie="import"]').click();assert(await page.locator('[data-act="rsave"]').isDisabled());
     // A source can remain English or be explicitly renamed in Turkish, without changing quantities.
     await page.locator('[data-f="name"]').fill('Türkçe deneme kahvaltısı');await page.locator('[data-kind="b"]').click();
@@ -51,7 +51,7 @@ async function put(data){const r=await fetch(API+'/api/state',{method:'PUT',head
     await page.route('**/api/state',route=>route.abort('internetdisconnected'));await page.locator('[data-ck]').first().uncheck();await page.waitForTimeout(500);assert(await page.evaluate(()=>JSON.parse(localStorage.getItem('beslenme-dirty'))));await page.unroute('**/api/state');
     await page.waitForFunction(()=>JSON.parse(localStorage.getItem('beslenme-dirty'))===false,{},{timeout:25000});
     assert.equal(errors.length,0,errors.join('\n'));
-    await page.locator('[data-tab="prefs"]').first().click();await page.locator('[data-mealie="load"]').click();await page.locator('text=62 tarif').waitFor();
+    await page.locator('[data-tab="prefs"]').first().click();await page.locator('[data-mealie="load"]').click();await page.locator('text='+count+' tarif').waitFor();
     await page.screenshot({path:process.env.SCREENSHOT||'/tmp/beslenme-mealie-mobile.png',fullPage:true});
     const cached=await browser.newContext({viewport:{width:390,height:844}});
     await cached.addInitScript(pin=>localStorage.setItem('beslenme-pin',JSON.stringify(pin)),config.pin);

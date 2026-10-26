@@ -1,4 +1,4 @@
-/* Ayrı katalog: hiçbir zaman state veya state_backup'a yazmaz. */
+/* Ayrı katalog: state'i değiştirmez; ilk gönderimde state_backup'a kopya ekler. */
 const MAX_BYTES=1_500_000;
 async function bodyText(req){
   const reader=req.body?.getReader();if(!reader)return '';

@@ -27,6 +27,14 @@ test('PIN state API, optimistic concurrency, backups and catalogue isolation',as
   r=await request('/api/mealie/catalog','PUT',{recipes:[],padding:'a'.repeat(1500001)},{'X-Sync-Key':env.MEALIE_SYNC_KEY});assert.equal(r.status,413);
   r=await request('/api/state','PUT',{...state,base:1,prefs:{b1:1}},{'X-Pin':env.PIN});assert.equal(r.status,200);
   assert.equal(sql.prepare('SELECT COUNT(*) AS n FROM state_backup').get().n,2);
+  const stateBeforeJob=sql.prepare('SELECT * FROM state').get();
+  r=await request('/api/mealie/discover','POST',undefined,{'X-Pin':env.PIN});assert.equal(r.status,202);const job=(await r.json()).job;
+  r=await request('/api/mealie/discover','POST',undefined,{'X-Pin':env.PIN});assert.equal((await r.json()).job.request_id,job.request_id);
+  r=await request('/api/mealie/discover','PUT',{id:job.request_id,status:'ready'},{'X-Pin':env.PIN});assert.equal(r.status,405);
+  r=await request('/api/mealie/discover','PUT',{id:'stale-id',status:'ready'},{'X-Sync-Key':env.MEALIE_SYNC_KEY});assert.equal(r.status,409);
+  r=await request('/api/mealie/discover','PUT',{id:job.request_id,status:'ready',report:{scanned:10,accepted:2,rejected:8}},{'X-Sync-Key':env.MEALIE_SYNC_KEY});assert.equal(r.status,200);
+  r=await request('/api/mealie/discover','GET',undefined,{'X-Pin':env.PIN});assert.equal((await r.json()).job.report.accepted,2);
+  assert.deepEqual(sql.prepare('SELECT * FROM state').get(),stateBeforeJob);
   sql.prepare('INSERT INTO pin_fail(ip,n,first) VALUES (?,?,?)').run('test-ip',10,new Date().toISOString());
   r=await request('/api/state','GET',undefined,{'X-Pin':env.PIN});assert.equal(r.status,429);
 });

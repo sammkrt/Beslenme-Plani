@@ -46,6 +46,8 @@ Yerel deneme: `server/.dev.vars` dosyasına `PIN=...` yazın, `npm run db:local 
 
 ## Mealie
 
+“Yeni hafta getir” artık internetten Türkçe akşam tarifleri arar ve ikinizin hedeflerine uyan en fazla iki yeni tarifi otomatik seçer. Bilinmeyen malzemeler otomatik kabul edilmez; uygun aday yoksa mevcut tariflerle devam edilir. Ayrıntılar: [Otomatik tarifler](AUTOMATIK-TARIFLER.md).
+
 Mealie ayrı Docker Compose projesinde çalışır: `deploy/mealie/compose.yaml`.
 Arayüz: https://kurtfamilyserver.dorper-boa.ts.net:9443 (Tailscale gerekir).
 Sunucuda yalnızca `127.0.0.1:9925` dinlenir; diğer servislerin portları değiştirilmez.

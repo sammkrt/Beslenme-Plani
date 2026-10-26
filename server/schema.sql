@@ -28,3 +28,12 @@ CREATE TABLE IF NOT EXISTS mealie_catalog (
   data TEXT NOT NULL,
   updated TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS mealie_discovery (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  request_id TEXT NOT NULL,
+  requested TEXT NOT NULL,
+  status TEXT NOT NULL,
+  finished TEXT,
+  report TEXT
+);

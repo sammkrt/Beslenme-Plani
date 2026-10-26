@@ -280,6 +280,7 @@ select.inp{appearance:auto}
 <div id="ptr" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
 
 <script src="mealie-adapter.js"></script>
+<script src="auto-recipes.js"></script>
 <script>
 /* ===== BESİN VERİTABANI: 100 g/ml başına (u:'adet'/'ölçek' ise birim başına) [kcal, protein, karb, yağ, lif] ===== */
 const F={
@@ -501,6 +502,7 @@ const Z=[
  spice:['karabiber','limon','sarımsak tozu'],steps:['Somon ve brokoliyi fırın kâğıdına dizin; limon, tuz, sarımsak tozu serpin (ek yağ yok).','200°C fırında 14–16 dk pişirin.','Yağsız bulgur, yoğurt ve salatayla servis edin.']}
 ];
 const ALL={};[B,S,D,Z].forEach(a=>a.forEach(x=>ALL[x.id]=x));
+const BUILTIN_POOLS=[B.slice(),S.slice(),D.slice(),Z.slice()];
 /* ===== TAHIL ROTASYONU: pilavı ayrı servis edilen akşamlarda (servis=1) tahıl haftalık döner; plan.g = seçilen tahıl ===== */
 const GR={bulgur:['bulgur','Bulguru 2 katı sıcak su ve tuzla 12 dk demleyin (yağsız).'],
   pirinc:['pirinç','Pirinci yıkayıp 1,5 katı suyla yağsız demleyin.'],
@@ -529,7 +531,7 @@ function validRecipe(r,kind){
     const steps=(r.steps||[]).filter(x=>typeof x==='string'&&x.length>5).slice(0,6).map(x=>x.slice(0,300));if(steps.length<1)return null;
     const spice=(r.spice||[]).filter(x=>typeof x==='string').slice(0,6).map(x=>x.slice(0,30));
     const pt=['tavuk','kiyma','et','bakliyat','balik'].includes(r.pt)?r.pt:'et';
-    const source=r.source&&typeof r.source.id==='string'&&/^[a-z0-9-]{1,64}$/i.test(r.source.id)?{id:r.source.id,name:String(r.source.name||'').slice(0,300),slug:String(r.source.slug||'').slice(0,200)}:null;
+    const source=r.source&&typeof r.source.id==='string'&&/^[a-z0-9-]{1,64}$/i.test(r.source.id)?{id:r.source.id,name:String(r.source.name||'').slice(0,300),slug:String(r.source.slug||'').slice(0,200),...(r.source.auto&&/^https:\/\/yemek\.com\/tarif\/[a-z0-9-]+\/$/.test(r.source.url)?{auto:true,url:r.source.url,notes:Array.isArray(r.source.notes)?r.source.notes.filter(n=>typeof n==='string').slice(0,6).map(n=>n.slice(0,200)):[]}:{})}:null;
     return {name:r.name,pt,two:!!r.two_day,kind:kind==='b'||kind==='s'?kind:(r.two_day?'d':'z'),ing,steps,spice,custom:1,...(source?{source}:{})};
   }catch(e){return null}
 }
@@ -682,7 +684,7 @@ function shopText(w,plans){
   SECS.forEach(([k,l])=>{if(!sh[k].length)return;t+='\n'+l+'\n\n';doneLast(sh[k],w.done||[]).forEach(x=>{const q=(w.qty||{})[x.k];t+=((w.done||[]).includes(x.k)?'☑ ':'☐ ')+x.n+' — '+(q||x.buy+(x.need?' (gerekli: '+x.need+')':''))+'\n'})});
   return t;
 }
-if(typeof module!=='undefined')module.exports={F,doneLast,validRecipe,validDays,daysOf,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
+if(typeof module!=='undefined')module.exports={F,ALL,addCustom,clash,doneLast,validRecipe,validDays,daysOf,B,S,D,Z,GR,view,grainOf,PREFS,dropRemoved,generate,swapPick,datedHist,nextStart,mondayOf,addDays,rangeLabel,relLabel,build,shopping,shopText,T,balance,mac};
 
 /* ===== ARAYÜZ ===== */
 if(typeof document!=='undefined'){
@@ -701,7 +703,7 @@ const validQty=w=>w.qty===undefined||w.qty&&typeof w.qty==='object'&&!Array.isAr
 const validDone=w=>w.done===undefined||Array.isArray(w.done)&&w.done.length<=150&&w.done.every(k=>typeof k==='string'&&/^[a-z0-9_]{1,32}$/.test(k));
 const validPlanDays=w=>!w.plans.some(p=>p.days!==undefined)||validDays(w.plans);
 const validX=x=>x&&typeof x==='object'&&Object.entries(x).every(([k,a])=>['b','s','d'].includes(k)&&Array.isArray(a)&&a.every(n=>Number.isInteger(n)&&n>=0&&n<30));
-function loadCustom(c){custom=[];if(Array.isArray(c))c.forEach(r=>{const v=validRecipe({...r,two_day:r.two},r.kind);if(v&&typeof r.id==='string'){v.id=r.id;v.hidden=!!r.hidden;custom.push(v);addCustom(v)}})}
+function loadCustom(c){[B,S,D,Z].forEach((pool,i)=>pool.splice(0,pool.length,...BUILTIN_POOLS[i]));Object.keys(ALL).forEach(k=>delete ALL[k]);BUILTIN_POOLS.forEach(pool=>pool.forEach(r=>ALL[r.id]=r));custom=[];if(Array.isArray(c))c.forEach(r=>{const v=validRecipe({...r,two_day:r.two},r.kind);if(v&&typeof r.id==='string'){v.id=r.id;v.hidden=!!r.hidden;custom.push(v);addCustom(v)}})}
 loadCustom(lsGet('beslenme-custom',[]));
 function loadPrefs(o){Object.keys(PREFS).forEach(k=>delete PREFS[k]);if(o&&typeof o==='object')Object.entries(o).forEach(([k,v])=>{if(ALL[k]&&(v===1||v===-1))PREFS[k]=v})}
 loadPrefs(lsGet('beslenme-prefs',{}));
@@ -719,7 +721,7 @@ function applyOp(o){
   if(o.t==='recipe'){const v=validRecipe({...o.r,two_day:o.r.two},o.r.kind);if(!v)return;v.id=o.r.id;v.hidden=!!o.r.hidden; // kendi tarifi ekle / güncelle
     const i=custom.findIndex(x=>x.id===v.id);if(i>=0)custom[i]=v;else custom.push(v);addCustom(v);return}
   if(o.t==='rhide'){const r=custom.find(x=>x.id===o.id);if(r){r.hidden=o.on;addCustom(r)}return}
-  if(o.t==='new'){if(!hist.some(x=>x.start===o.w.start)){hist.push(clone(o.w));hist.sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0);if(hist.length>26)hist.shift()}return}
+  if(o.t==='new'){if(!hist.some(x=>x.start===o.w.start)){(o.recipes||[]).forEach(r=>applyOp({t:'recipe',r}));hist.push(clone(o.w));hist.sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0);if(hist.length>26)hist.shift()}return}
   const w=hist.find(x=>x.start===o.start);if(!w)return; // hafta başka telefonda silinmişse işlem düşer
   if(o.t==='wdel'){hist.splice(hist.indexOf(w),1);return}
   if(o.t==='regen'){w.plans=clone(o.plans);const own=new Set((w.extra||[]).map(x=>x.k)); // yeni menü: hesaplanan ürünlerin işaretleri ve elle miktarları sıfırlanır, elle eklenen ürünler kalır
@@ -774,7 +776,7 @@ function setSync(s){sync=s;const el=$('sync');if(el)el.outerHTML=syncSpan();cons
 /* Sunucudaki durumu benimser (sunucu tek doğru kaynaktır). */
 function adopt(d){
   const keep=custom;loadCustom(d.custom);
-  if(!validHist(d.hist)){custom=keep;return false} // boş liste de geçerli: tüm haftalar silinmiş olabilir
+  if(!validHist(d.hist)){loadCustom(keep);return false} // boş liste de geçerli: tüm haftalar silinmiş olabilir
   const was=hist[cur]&&hist[cur].start;                       // açık olan haftada kal (arka plan eşitlemesi ekranı zıplatmasın)
   loadPrefs(d.prefs);hist=d.hist;ver=d.v;dirty=datedHist(hist);
   if(pendingOps.length){pendingOps.forEach(applyOp);dirty=true}
@@ -1012,6 +1014,7 @@ function detailHTML(w,plans){
     (isZ(rec)?'Izgara ve balık bekletilmez; her gün o günün porsiyonunu taze pişirin.':'Pilav, yoğurt ve salata günlük hazırlanır; yemek buzdolabında kapalı kapta '+n+' gün saklanır. Tabağa koyarken eti/proteini tartarak paylaştırın.')+'</p></section>';
   h+='<section class="card pad" aria-labelledby="steph"><div class="row"><h2 id="steph">Hazırlanışı</h2>'+((rec.spice||[]).length?'<span class="note">'+rec.spice.map(esc).join(' · ')+'</span>':'')+'</div>'+
     '<ol class="steps">'+rec.steps.map(s=>'<li><span>'+esc(s)+'</span></li>').join('')+'</ol></section>';
+  if(rec.source?.auto)h+='<section class="card pad"><h2>İnternetten yeni tarif</h2><p class="note">Kişisel porsiyonlara uyarlanmıştır; besin değerleri bu uygulamanın tablosundan hesaplanır.</p><ul class="note dlist">'+(rec.source.notes||[]).map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul><a class="btn" href="'+q2(rec.source.url)+'" target="_blank" rel="noopener">Orijinal Türkçe tarifi aç</a></section>';
   h+='<div class="chiprow">'+(rec.custom?'<button class="btn" data-redit="'+rec.id+'">'+SV(I.pencil,18)+'Düzenle</button>':'')+'<button class="btn" data-ecopy="'+rec.id+'">'+SV(I.copy,18)+'Kopyala ve düzenle</button></div>';
   return h+'<div class="two"><button class="btn" data-pref="'+rec.id+':1" aria-pressed="'+(pv===1)+'">'+SV(I.thumb)+'Sevdik</button><button class="btn" data-pref="'+rec.id+':-1" aria-pressed="'+(pv===-1)+'">'+SV(I.thumb,20,2,'flip')+'Sevmedik</button></div>'+
     '<p class="note" style="text-align:center">İkinizin ortak tercihi: sevdikleriniz daha sık gelir, sevmedikleriniz yeni haftalara konmaz.</p>';
@@ -1248,6 +1251,7 @@ function fillEditor(res,label){
   toast(res.rows.length+' malzeme dolduruldu'+(res.notes.length?'; notları kontrol edin':''));
 }
 let mealie={recipes:[],updated:null},mealieStatus='idle',mealieQuery='';
+let preparingWeek=false;
 async function loadMealie(){
   if(mealieStatus==='loading')return;
   if(!pin){toast('Önce ortak PIN’i girin');return}
@@ -1264,7 +1268,7 @@ async function loadMealie(){
 }
 function mealieHTML(){
   const q=mealieQuery.toLocaleLowerCase('tr-TR'),all=mealie.recipes.filter(r=>r.name.toLocaleLowerCase('tr-TR').includes(q));
-  let h='<section class="card"><div class="pad"><div class="row"><h2>Mealie tarifleri</h2><span class="note">'+mealie.recipes.length+' tarif</span></div><p class="note">Tarif seçin; iki kişinin porsiyonlarını kontrol ederek planınıza kopyalayın. Kaynak tarifin sonraki değişiklikleri geçmiş planları etkilemez.</p>'+
+  let h='<section class="card"><div class="pad"><div class="row"><h2>Mealie tarifleri</h2><span class="note">'+mealie.recipes.length+' tarif</span></div><p class="note">Yeni hafta hazırlanırken internetten Türkçe tarifler aranır; hesaplanabilen ve ikinizin hedefine uyan yeni yemekler otomatik eklenir. Diğer tarifleri aşağıdan kontrol ederek ekleyebilirsiniz.</p>'+
     '<button class="btn" data-mealie="load"'+(mealieStatus==='loading'?' disabled':'')+'>'+(mealieStatus==='loading'?'Tarifler getiriliyor…':'Tarifleri getir / yenile')+'</button>';
   if(mealieStatus==='error')h+='<p class="note" role="status">Kataloğa ulaşılamadı. PIN’i ve bağlantıyı kontrol edip tekrar deneyin. Mevcut planınız kullanılabilir.</p>';
   if(mealieStatus==='unconfigured'||mealieStatus==='ok'&&!mealie.updated)h+='<p class="note">Mealie bağlantısı hazırlanıyor; henüz katalog gönderilmedi.</p>';
@@ -1273,8 +1277,8 @@ function mealieHTML(){
   if(mealie.recipes.length)h+='<form id="mealie-search" class="addrow"><input id="mealie-query" class="inp" aria-label="Mealie tariflerinde ara" placeholder="Tarif ara" value="'+q2(mealieQuery)+'"><button class="btn" type="submit">Ara</button></form>';
   h+='</div>';
   if(mealie.recipes.length)h+='<ul class="list rlist">'+all.slice(0,20).map(r=>{
-    const snap=MealieAdapter.readSnapshot(r,F),existing=snap&&!snap.recipe.custom&&ALL[snap.recipe.id],imported=custom.some(c=>c.source?.id===r.id&&!c.hidden);
-    return '<li><div class="rn"><b>'+esc(r.name)+'</b><span class="note">'+(existing?'Türkçe · Plan havuzunda mevcut':snap?'Doğrulanmış kişi porsiyonları':'Kaynak dili · Malzeme kontrolü gerekli')+(imported?' · Daha önce alındı':'')+'</span></div>'+
+    const snap=MealieAdapter.readSnapshot(r,F),existing=snap&&!snap.recipe.custom&&ALL[snap.recipe.id],ready=AutoRecipes.read(r,autoCore()),imported=custom.some(c=>c.source?.id===r.id&&!c.hidden);
+    return '<li><div class="rn"><b>'+esc(r.name)+'</b><span class="note">'+(existing?'Türkçe · Plan havuzunda mevcut':ready?'Türkçe · Yeni haftada otomatik seçilebilir':snap?'Doğrulanmış kişi porsiyonları':'Kaynak dili · Malzeme kontrolü gerekli')+(imported?' · Daha önce alındı':'')+'</span></div>'+
       (existing?'':'<button class="btn sm" data-mealie="import" data-id="'+q2(r.id)+'">Kontrol ederek ekle</button>')+'</li>';
   }).join('')+'</ul><p class="note pad">'+all.length+' sonuç'+(all.length>20?' · İlk 20 gösteriliyor; arayarak daraltın.':'')+'</p>';
   return h+'</section>';
@@ -1362,10 +1366,31 @@ let confirmKey=null;
 function arm(k){confirmKey=k;render();clearTimeout(arm.t);arm.t=setTimeout(()=>{if(confirmKey===k){confirmKey=null;render()}},4000)}
 function go(i){cur=i;day=defDay();confirmKey=null;editDays=null;detail=null;render()}
 /* Yeni hafta: bu hafta yoksa bu hafta, varsa gelecek hafta hazırlanır; en fazla 1 hafta ileriye. */
-function newWeek(){
+const autoCore=()=>({F,T,ALL,B,S,D,Z,GR,grainOf,PREFS,addCustom,clash,generate,balance,mac,validRecipe});
+async function discoverForWeek(){
+  if(!pin||!navigator.onLine)return [];
+  const headers={'X-Pin':pin};
+  try{
+    const start=await fetch(API+'/api/mealie/discover',{method:'POST',headers,signal:AbortSignal.timeout(8000)});
+    if(start.ok){let {job}=await start.json();const deadline=Date.now()+35000;
+      while(job&&['queued','running'].includes(job.status)&&Date.now()<deadline){await new Promise(r=>setTimeout(r,2000));const r=await fetch(API+'/api/mealie/discover',{headers,signal:AbortSignal.timeout(5000)});if(!r.ok)break;job=(await r.json()).job}
+    }
+    const r=await fetch(API+'/api/mealie/catalog',{headers,cache:'no-store',signal:AbortSignal.timeout(8000)});if(!r.ok)return [];
+    const d=await r.json();return (d.recipes||[]).map(r=>AutoRecipes.read(r,autoCore())).filter(Boolean).slice(0,Math.max(0,60-custom.length));
+  }catch(_){return []}
+}
+async function newWeek(){
+  if(preparingWeek)return;
   window.scrollTo({top:0});
   if(nextStart(hist)>addDays(thisMon(),7)){cur=hist.length-1;day=defDay();render();toast('Gelecek haftanın menüsü zaten hazır');return}
-  const w=generate(hist);confirmKey=null;doOp({t:'new',w},()=>{cur=hist.findIndex(x=>x.start===w.start);day=defDay()});toast(weekLabel(w)+' hazır');
+  preparingWeek=true;const button=$('wnew');if(button){button.disabled=true;button.textContent='Yeni tarifler aranıyor…'}
+  try{
+    const candidates=await discoverForWeek();
+    if(nextStart(hist)>addDays(thisMon(),7)){toast('Gelecek haftanın menüsü zaten hazır');return}
+    const result=AutoRecipes.plan(autoCore(),hist,candidates);if(result.error){toast(result.error);return}
+    const w=result.week;confirmKey=null;doOp({t:'new',w,recipes:result.recipes},()=>{cur=hist.findIndex(x=>x.start===w.start);day=defDay()});
+    toast(weekLabel(w)+' hazır · '+(result.recipes.length?result.recipes.length+' yeni internet tarifi':custom.length>=60?'Tarif arşivi dolu; mevcut tarifler kullanıldı':'Mevcut tariflerle; uygun yeni tarif bulunamadı'));
+  }finally{preparingWeek=false;render()}
 }
 document.addEventListener('click',e=>{
   const t=e.target,c=s=>t.closest?t.closest(s):null;let b;

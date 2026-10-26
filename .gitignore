@@ -6,3 +6,4 @@ node_modules/
 .env
 credentials.json
 *.local.json
+deploy/mealie/runtime/
