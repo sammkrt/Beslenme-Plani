@@ -50,6 +50,7 @@ Mealie ayrı Docker Compose projesinde çalışır: `deploy/mealie/compose.yaml`
 Arayüz: https://kurtfamilyserver.dorper-boa.ts.net:9443 (Tailscale gerekir).
 Sunucuda yalnızca `127.0.0.1:9925` dinlenir; diğer servislerin portları değiştirilmez.
 Giriş e-postası ve rastgele oluşturulmuş parola `deploy/mealie/credentials.json` dosyasındadır (600 izinli, Git dışında). Varsayılan parola değiştirilmiştir. Bu dosyayı veya token'ları Git'e eklemeyin.
+Kullanıcı adı `samet`; yalnızca adres, kullanıcı ve şifreyi içeren giriş kartı `deploy/mealie/giris.local.json` dosyasındadır (600 izinli, Git dışında).
 
 **Kullanım:** Mealie'de tarif ekleyin veya bir tarifin internet bağlantısını içe aktarın. Katalog yaklaşık dakikada bir uygulamaya gönderilir. Beslenme Planı › Tercihler › Mealie tarifleri › Tarifleri getir / yenile yolundan bulun. Mevcut 62 Türkçe tarif zaten plan havuzundadır; tekrar eklenmez. Yeni tarifte “Kontrol ederek ekle” ile malzemeleri, birimleri ve iki kişinin miktarlarını onaylayıp kaydedin.
 

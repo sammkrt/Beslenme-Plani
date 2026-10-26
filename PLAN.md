@@ -44,3 +44,5 @@ Kaynak yedeği `/home/samet/backups/beslenme/` altında. Önceki Git sürümün�
 - Yedi Node testi geçti. 100 haftalık eski/yeni hesap özeti birebir aynı.
 - Chrome mobil akışları geçti: İngilizce tarifin Türkçe adlandırılması, her malzemenin onayı, besin eşitliği, kullanılmış tarifin kopyalanması, çevrimdışı işlem → sayfa yenileme → iki cihaz çakışması, zamanlayıcıyla yeniden gönderim ve gerçek service worker ile çevrimdışı açılış.
 - Mealie arayüzü için ek Tailscale yönlendirmesi kullanıcı tarafından çalıştırıldı; mevcut 443 ve 8443 yönlendirmeleri korundu.
+- Yayındaki HTML, adaptör ve service worker dosyalarının SHA256 değerleri yerelde test edilen dosyalarla eşleşti. Yayındaki mobil arayüz izole test verisiyle 62 tarifi hatasız gösterdi; bu kontrol canlı plan verisine erişmedi veya yazmadı.
+- Mealie yönetimine gerçek Chrome ile `samet` hesabıyla giriş ve ana sayfa doğrulandı; JavaScript hatası yok. Var olan 3000, 3100, 3200 ve 8081 servisleri HTTP 200 döndürdü.
